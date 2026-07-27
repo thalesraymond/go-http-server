@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+
+	"github.com/thalesraymond/go-http-server/internal/handler"
 )
 
 func main() {
@@ -13,7 +15,9 @@ func main() {
 		Handler: serverMux,
 	}
 
-	serverMux.Handle("/", http.FileServer(http.Dir("./")))
+	serverMux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir("./"))))
+
+	serverMux.HandleFunc("/healthz", handler.HealthzHandler)
 
 	server.ListenAndServe()
 }
