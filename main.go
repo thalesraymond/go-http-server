@@ -21,11 +21,11 @@ func main() {
 
 	serverMux.Handle("/app/", apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./")))))
 
-	serverMux.HandleFunc("/healthz", handler.HealthzHandler)
+	serverMux.HandleFunc("GET /healthz", handler.HealthzHandler)
 
-	serverMux.HandleFunc("/metrics", apiConfig.handlerMetrics)
+	serverMux.HandleFunc("GET /metrics", apiConfig.handlerMetrics)
 
-	serverMux.HandleFunc("/reset", apiConfig.handlerReset)
+	serverMux.HandleFunc("POST /reset", apiConfig.handlerReset)
 
 	server.ListenAndServe()
 }
