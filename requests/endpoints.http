@@ -1,0 +1,27 @@
+### Health Check
+# Returns OK if the server is healthy
+GET http://localhost:8080/api/healthz HTTP/1.1
+
+### Get Admin Metrics
+# Returns an HTML page showing how many times the file server has been visited
+GET http://localhost:8080/admin/metrics HTTP/1.1
+
+### Reset Metrics
+# Resets the file server visit counter to 0
+POST http://localhost:8080/admin/reset HTTP/1.1
+
+### Serve Static File (index.html)
+# Serves the index.html file from the root directory via the /app/ path
+GET http://localhost:8080/app/ HTTP/1.1
+
+### Serve Static File (LICENSE)
+# Serves the LICENSE file from the root directory via the /app/ path
+GET http://localhost:8080/app/LICENSE HTTP/1.1
+
+### Serve Static File (README.md)
+# Serves the README.md file from the root directory via the /app/ path
+GET http://localhost:8080/app/README.md HTTP/1.1
+
+### Serve Static File (assets directory listing)
+# Serves the assets directory contents via the /app/ path
+GET http://localhost:8080/app/assets/ HTTP/1.1
