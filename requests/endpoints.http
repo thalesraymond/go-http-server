@@ -25,3 +25,17 @@ GET http://localhost:8080/app/README.md HTTP/1.1
 ### Serve Static File (assets directory listing)
 # Serves the assets directory contents via the /app/ path
 GET http://localhost:8080/app/assets/ HTTP/1.1
+
+### Validate Chirp
+# Validates a chirp body and returns whether it's valid
+POST http://localhost:8080/api/validate_chirp HTTP/1.1
+Content-Type: application/json
+
+{"body": "This is a chirp"}
+
+### Validate Chirp
+# Validates a chirp body and returns whether it's invalid (exceeds 140 characters)
+POST http://localhost:8080/api/validate_chirp HTTP/1.1
+Content-Type: application/json
+
+{"body": "This is a chirp that exceeds the maximum length of 140 characters. It should return an error response indicating that the chirp is too long..."}

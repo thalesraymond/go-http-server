@@ -27,6 +27,8 @@ func main() {
 
 	serverMux.HandleFunc("POST /admin/reset", apiConfig.handlerReset)
 
+	serverMux.HandleFunc("POST /api/validate_chirp", handler.ValidateChirpHandler)
+
 	server.ListenAndServe()
 }
 
