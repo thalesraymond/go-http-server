@@ -66,7 +66,11 @@ func returnWithError(w http.ResponseWriter, statusCode int, errorMessage string)
 func returnWithJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(payload)
+	err := json.NewEncoder(w).Encode(payload)
+
+	if err != nil {
+		http.Error(w, "Failed to encode JSON response", http.StatusInternalServerError)
+	}
 }
 
 func ValidateChirpHandler(w http.ResponseWriter, r *http.Request) {

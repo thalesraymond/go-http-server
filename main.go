@@ -29,7 +29,10 @@ func main() {
 
 	serverMux.HandleFunc("POST /api/validate_chirp", handler.ValidateChirpHandler)
 
-	server.ListenAndServe()
+	err := server.ListenAndServe()
+	if err != nil {
+		fmt.Println("Failed to start server:", err)
+	}
 }
 
 type apiConfig struct {
@@ -46,17 +49,24 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `<html>
+	_, err := fmt.Fprintf(w, `<html>
   <body>
     <h1>Welcome, Chirpy Admin</h1>
     <p>Chirpy has been visited %d times!</p>
   </body>
 </html>`, cfg.fileserverHits.Load())
+
+	if err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+	}
 }
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	cfg.fileserverHits.Store(0)
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	_, err := w.Write([]byte("OK"))
+	if err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+	}
 }
