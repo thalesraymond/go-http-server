@@ -6,57 +6,52 @@ import (
 	"strconv"
 )
 
+type chirpRequest struct {
+	Body string `json:"body"`
+}
+
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
+type validResponse struct {
+	Valid bool `json:"valid"`
+}
+
+func returnWithError(w http.ResponseWriter, statusCode int, errorMessage string) {
+	returnWithJSON(w, statusCode, errorResponse{
+		Error: errorMessage,
+	})
+}
+
+func returnWithJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(payload)
+}
+
 func ValidateChirpHandler(w http.ResponseWriter, r *http.Request) {
-	type Request struct {
-		Body string `json:"body"`
-	}
-
-	type ValidResponse struct {
-		Valid bool `json:"valid"`
-	}
-
-	type ErrorResponse struct {
-		Error string `json:"error"`
-	}
 
 	const maxChirpLength = 140
 
-	decoder := json.NewDecoder(r.Body)
+	var req chirpRequest
 
-	var req Request
-	w.Header().Add("Content-Type", "application/json; charset=utf-8")
-	if err := decoder.Decode(&req); err != nil {
-		resp := ErrorResponse{
-			Error: "Invalid request body",
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(resp)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		returnWithError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if len(req.Body) == 0 {
-		resp := ErrorResponse{
-			Error: "Chirp body cannot be empty",
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(resp)
+		returnWithError(w, http.StatusBadRequest, "Chirp body cannot be empty")
 		return
 	}
 
 	if len(req.Body) > maxChirpLength {
-		resp := ErrorResponse{
-			Error: "Chirp body exceeds maximum length of " + strconv.Itoa(maxChirpLength) + " characters",
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(resp)
+		returnWithError(w, http.StatusBadRequest, "Chirp body exceeds maximum length of "+strconv.Itoa(maxChirpLength)+" characters")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-
-	resp := ValidResponse{
+	returnWithJSON(w, http.StatusOK, validResponse{
 		Valid: true,
-	}
-
-	json.NewEncoder(w).Encode(resp)
+	})
 }
