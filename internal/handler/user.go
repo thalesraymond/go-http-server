@@ -21,7 +21,7 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/users", h.CreateUser)
 	mux.HandleFunc("GET /api/users", h.GetUsers)
 	mux.HandleFunc("GET /api/users/{id}", h.GetUserByID)
-	mux.HandleFunc("PUT /api/users", h.UpdateUserByID)
+	mux.Handle("PUT /api/users", h.apiConfig.AuthMiddleware(http.HandlerFunc(h.UpdateUserByID)))
 	mux.HandleFunc("DELETE /api/users", h.DeleteUserByID)
 }
 
@@ -79,16 +79,58 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, createdUserDTO)
 }
 
+type UpdateUserRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
+	userID, ok := GetUserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var updateUserRequestData UpdateUserRequest
+	if err := decodeJSON(w, r, &updateUserRequestData); err != nil {
+		h.apiConfig.Logger.Error("Invalid request payload", err)
+		writeError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if updateUserRequestData.Email == "" || updateUserRequestData.Password == "" {
+		h.apiConfig.Logger.Error("Email and password are required", nil)
+		writeError(w, http.StatusBadRequest, "email and password are required")
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(updateUserRequestData.Password)
+	if err != nil {
+		h.apiConfig.Logger.Error("Failed to hash password", err)
+		writeError(w, http.StatusInternalServerError, "Failed to update user")
+		return
+	}
+
+	updatedUser, err := h.apiConfig.Database.UpdateUser(r.Context(), database.UpdateUserParams{
+		ID:             userID,
+		Email:          updateUserRequestData.Email,
+		HashedPassword: hashedPassword,
+	})
+	if err != nil {
+		h.apiConfig.Logger.Error("Failed to update user", err)
+		writeError(w, http.StatusInternalServerError, "Failed to update user")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toUserResponse(updatedUser))
+}
+
 func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	// Implement the logic to get all users
 }
 
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	// Implement the logic to get a user by ID
-}
-
-func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
-	// Implement the logic to update a user by ID
 }
 
 func (h *UserHandler) DeleteUserByID(w http.ResponseWriter, r *http.Request) {

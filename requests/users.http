@@ -17,7 +17,7 @@ Content-Type: application/json
 POST http://localhost:8080/api/login HTTP/1.1
 Content-Type: application/json
 
-{"email": "thales@example.com", "password": "securepassword123"}
+{"email": "thales@example.com", "password": "newsecurepassword123"}
 
 ### Login (invalid credentials)
 # Returns 401 Unauthorized when the email or password is incorrect
@@ -25,3 +25,18 @@ POST http://localhost:8080/api/login HTTP/1.1
 Content-Type: application/json
 
 {"email": "thales@example.com", "password": "wrongpassword"}
+
+### Update User
+# Updates an existing user and returns the updated user
+PUT http://localhost:8080/api/users HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <ACCESS_TOKEN>
+
+{"email": "thales@example.com", "password": "newsecurepassword123"}
+
+### Update User (invalid payload)
+# Returns 400 Bad Request when the JSON payload is malformed
+PUT http://localhost:8080/api/users HTTP/1.1
+Content-Type: application/json
+
+{invalid json}
