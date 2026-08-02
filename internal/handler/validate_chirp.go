@@ -1,23 +1,8 @@
 package handler
 
 import (
-	"encoding/json"
-	"net/http"
-	"strconv"
 	"strings"
 )
-
-type chirpRequest struct {
-	Body string `json:"body"`
-}
-
-type errorResponse struct {
-	Error string `json:"error"`
-}
-
-type validResponse struct {
-	CleanedBody string `json:"cleaned_body"`
-}
 
 var profanityList = []string{
 	"kerfuffle",
@@ -55,48 +40,4 @@ func replaceProfanity(text string) string {
 		}
 	}
 	return result
-}
-
-func returnWithError(w http.ResponseWriter, statusCode int, errorMessage string) {
-	returnWithJSON(w, statusCode, errorResponse{
-		Error: errorMessage,
-	})
-}
-
-func returnWithJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	err := json.NewEncoder(w).Encode(payload)
-
-	if err != nil {
-		http.Error(w, "Failed to encode JSON response", http.StatusInternalServerError)
-	}
-}
-
-func ValidateChirpHandler(w http.ResponseWriter, r *http.Request) {
-
-	const maxChirpLength = 140
-
-	var req chirpRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		returnWithError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if len(req.Body) == 0 {
-		returnWithError(w, http.StatusBadRequest, "Chirp body cannot be empty")
-		return
-	}
-
-	if len(req.Body) > maxChirpLength {
-		returnWithError(w, http.StatusBadRequest, "Chirp body exceeds maximum length of "+strconv.Itoa(maxChirpLength)+" characters")
-		return
-	}
-
-	result := containsProfanity(req.Body)
-
-	returnWithJSON(w, http.StatusOK, validResponse{
-		CleanedBody: result.CleanedBody,
-	})
 }

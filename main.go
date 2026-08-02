@@ -54,8 +54,6 @@ func main() {
 
 	serverMux.HandleFunc("POST /admin/reset", apiConfig.HandlerReset)
 
-	serverMux.HandleFunc("POST /api/validate_chirp", handler.ValidateChirpHandler)
-
 	userHandler := handler.NewUserHandler(apiConfig)
 	userHandler.RegisterRoutes(serverMux)
 
