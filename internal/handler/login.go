@@ -174,6 +174,6 @@ func getRefreshTokenFromHeader(r *http.Request) (string, error) {
 	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
 		return authHeader[7:], nil
 	} else {
-		return "", errors.New("Invalid Authorization header")
+		return "", errors.New("invalid Authorization header")
 	}
 }
