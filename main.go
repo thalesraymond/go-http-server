@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync/atomic"
 
 	"github.com/joho/godotenv"
 	"github.com/thalesraymond/go-http-server/internal/database"
@@ -23,8 +22,6 @@ func main() {
 		Handler: serverMux,
 	}
 
-	apiConfig := &apiConfig{}
-
 	godotenv.Load()
 
 	dbURL := os.Getenv("DB_URL")
@@ -37,57 +34,23 @@ func main() {
 
 	defer db.Close()
 
-	apiConfig.Database = database.New(db)
+	apiConfig := handler.NewApiConfig(database.New(db))
 
-	serverMux.Handle("/app/", apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./")))))
+	serverMux.Handle("/app/", apiConfig.MiddlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./")))))
 
 	serverMux.HandleFunc("GET /api/healthz", handler.HealthzHandler)
 
-	serverMux.HandleFunc("GET /admin/metrics", apiConfig.handlerMetrics)
+	serverMux.HandleFunc("GET /admin/metrics", apiConfig.HandlerMetrics)
 
-	serverMux.HandleFunc("POST /admin/reset", apiConfig.handlerReset)
+	serverMux.HandleFunc("POST /admin/reset", apiConfig.HandlerReset)
 
 	serverMux.HandleFunc("POST /api/validate_chirp", handler.ValidateChirpHandler)
+
+	userHandler := handler.NewUserHandler(apiConfig)
+	userHandler.RegisterRoutes(serverMux)
 
 	err = server.ListenAndServe()
 	if err != nil {
 		fmt.Println("Failed to start server:", err)
-	}
-}
-
-type apiConfig struct {
-	Database       *database.Queries
-	fileserverHits atomic.Int32
-}
-
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileserverHits.Add(1)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, err := fmt.Fprintf(w, `<html>
-  <body>
-    <h1>Welcome, Chirpy Admin</h1>
-    <p>Chirpy has been visited %d times!</p>
-  </body>
-</html>`, cfg.fileserverHits.Load())
-
-	if err != nil {
-		http.Error(w, "Failed to write response", http.StatusInternalServerError)
-	}
-}
-
-func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
-	cfg.fileserverHits.Store(0)
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte("OK"))
-	if err != nil {
-		http.Error(w, "Failed to write response", http.StatusInternalServerError)
 	}
 }
