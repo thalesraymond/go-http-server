@@ -18,7 +18,7 @@ func NewChirpHandler(apiConfig *ApiConfig) *ChirpHandler {
 }
 
 func (h *ChirpHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/chirps", h.CreateChirp)
+	mux.Handle("POST /api/chirps", h.apiConfig.AuthMiddleware(http.HandlerFunc(h.CreateChirp)))
 	mux.HandleFunc("GET /api/chirps", h.GetChirps)
 	mux.HandleFunc("GET /api/chirps/{id}", h.GetChirpByID)
 	mux.HandleFunc("PUT /api/chirps", h.UpdateChirpByID)
@@ -26,8 +26,7 @@ func (h *ChirpHandler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 type CreateChirpRequest struct {
-	Body   string    `json:"body"`
-	UserID uuid.UUID `json:"user_id"`
+	Body string `json:"body"`
 }
 
 type ChirpResponse struct {
@@ -71,10 +70,12 @@ func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request) {
 
 	result := containsProfanity(chirpRequestData.Body)
 
+	userID, _ := r.Context().Value(userIDKey).(uuid.UUID)
+
 	createdChirp, err := h.apiConfig.Database.CreateChirp(r.Context(), database.CreateChirpParams{
 		ID:     uuid.New(),
 		Body:   result.CleanedBody,
-		UserID: chirpRequestData.UserID,
+		UserID: userID,
 	})
 
 	if err != nil {

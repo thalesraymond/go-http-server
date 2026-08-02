@@ -42,12 +42,14 @@ type ApiConfig struct {
 	Database       database.Querier
 	fileserverHits atomic.Int32
 	Logger         Logger
+	Secret         string
 }
 
-func NewApiConfig(db database.Querier) *ApiConfig {
+func NewApiConfig(db database.Querier, secret string) *ApiConfig {
 	return &ApiConfig{
 		Database: db,
 		Logger:   NewLogger(),
+		Secret:   secret,
 	}
 }
 
