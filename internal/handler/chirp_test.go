@@ -89,13 +89,12 @@ func TestHandlerCreateChirp(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockDatabase{}
+			store := &mockChirpStore{}
 			if tt.mockFn != nil {
-				mockDB.CreateChirpFn = tt.mockFn
+				store.createChirpFn = tt.mockFn
 			}
 
-			cfg := newTestApiConfig(mockDB)
-			h := NewChirpHandler(cfg)
+			cfg, h := newTestChirpHandler(store)
 
 			token, err := auth.MakeJWT(userID, cfg.Secret, time.Hour)
 			if err != nil {
@@ -160,10 +159,10 @@ func TestHandlerGetChirps(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockDatabase{}
-			mockDB.GetAllChirpsFn = tt.mockFn
+			store := &mockChirpStore{}
+			store.getAllChirpsFn = tt.mockFn
 
-			h := NewChirpHandler(newTestApiConfig(mockDB))
+			_, h := newTestChirpHandler(store)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/chirps", nil)
 			rr := httptest.NewRecorder()
@@ -236,12 +235,12 @@ func TestHandlerGetChirpByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockDatabase{}
+			store := &mockChirpStore{}
 			if tt.mockFn != nil {
-				mockDB.GetChirpByIDFn = tt.mockFn
+				store.getChirpByIDFn = tt.mockFn
 			}
 
-			h := NewChirpHandler(newTestApiConfig(mockDB))
+			_, h := newTestChirpHandler(store)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/chirps/"+tt.pathID, nil)
 			req.SetPathValue("id", tt.pathID)
@@ -258,8 +257,7 @@ func TestHandlerGetChirpByID(t *testing.T) {
 
 func TestHandlerUpdateChirpByID(t *testing.T) {
 	t.Run("stub returns ok", func(t *testing.T) {
-		mockDB := &MockDatabase{}
-		h := NewChirpHandler(newTestApiConfig(mockDB))
+		_, h := newTestChirpHandler(nil)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/chirps", nil)
 		rr := httptest.NewRecorder()
@@ -344,15 +342,15 @@ func TestHandlerDeleteChirpByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockDatabase{}
+			store := &mockChirpStore{}
 			if tt.mockGetFn != nil {
-				mockDB.GetChirpByIDFn = tt.mockGetFn
+				store.getChirpByIDFn = tt.mockGetFn
 			}
 			if tt.mockDeleteFn != nil {
-				mockDB.DeleteChirpByIDFn = tt.mockDeleteFn
+				store.deleteChirpByIDFn = tt.mockDeleteFn
 			}
 
-			h := NewChirpHandler(newTestApiConfig(mockDB))
+			_, h := newTestChirpHandler(store)
 
 			req := httptest.NewRequest(http.MethodDelete, "/api/chirps/"+tt.pathID, nil)
 			req.SetPathValue("id", tt.pathID)

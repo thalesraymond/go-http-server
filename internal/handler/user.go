@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -11,10 +12,16 @@ import (
 
 type UserHandler struct {
 	apiConfig *ApiConfig
+	store     userStore
+}
+
+type userStore interface {
+	CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error)
+	UpdateUser(ctx context.Context, arg database.UpdateUserParams) (database.User, error)
 }
 
 func NewUserHandler(apiConfig *ApiConfig) *UserHandler {
-	return &UserHandler{apiConfig: apiConfig}
+	return &UserHandler{apiConfig: apiConfig, store: apiConfig.Database}
 }
 
 func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -62,7 +69,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdUser, err := h.apiConfig.Database.CreateUser(r.Context(), database.CreateUserParams{
+	createdUser, err := h.store.CreateUser(r.Context(), database.CreateUserParams{
 		ID:             uuid.New(),
 		Email:          userRequestData.Email,
 		HashedPassword: hashedPassword,
@@ -111,7 +118,7 @@ func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedUser, err := h.apiConfig.Database.UpdateUser(r.Context(), database.UpdateUserParams{
+	updatedUser, err := h.store.UpdateUser(r.Context(), database.UpdateUserParams{
 		ID:             userID,
 		Email:          updateUserRequestData.Email,
 		HashedPassword: hashedPassword,

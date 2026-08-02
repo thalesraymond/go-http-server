@@ -18,7 +18,7 @@ func TestAuthMiddleware(t *testing.T) {
 		t.Fatalf("MakeJWT failed: %v", err)
 	}
 
-	cfg := newTestApiConfig(&MockDatabase{})
+	cfg := newTestApiConfig()
 	cfg.Secret = secret
 
 	target := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

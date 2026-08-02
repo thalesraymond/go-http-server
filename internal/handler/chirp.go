@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"time"
@@ -11,10 +12,18 @@ import (
 
 type ChirpHandler struct {
 	apiConfig *ApiConfig
+	store     chirpStore
+}
+
+type chirpStore interface {
+	CreateChirp(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error)
+	GetAllChirps(ctx context.Context) ([]database.Chirp, error)
+	GetChirpByID(ctx context.Context, id uuid.UUID) (database.Chirp, error)
+	DeleteChirpByID(ctx context.Context, id uuid.UUID) error
 }
 
 func NewChirpHandler(apiConfig *ApiConfig) *ChirpHandler {
-	return &ChirpHandler{apiConfig: apiConfig}
+	return &ChirpHandler{apiConfig: apiConfig, store: apiConfig.Database}
 }
 
 func (h *ChirpHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -72,7 +81,7 @@ func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request) {
 
 	userID, _ := r.Context().Value(userIDKey).(uuid.UUID)
 
-	createdChirp, err := h.apiConfig.Database.CreateChirp(r.Context(), database.CreateChirpParams{
+	createdChirp, err := h.store.CreateChirp(r.Context(), database.CreateChirpParams{
 		ID:     uuid.New(),
 		Body:   result.CleanedBody,
 		UserID: userID,
@@ -90,7 +99,7 @@ func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ChirpHandler) GetChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := h.apiConfig.Database.GetAllChirps(r.Context())
+	chirps, err := h.store.GetAllChirps(r.Context())
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to get chirps", err)
 		writeError(w, http.StatusInternalServerError, "Failed to get chirps")
@@ -119,7 +128,7 @@ func (h *ChirpHandler) GetChirpByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirp, err := h.apiConfig.Database.GetChirpByID(r.Context(), chirpUUID)
+	chirp, err := h.store.GetChirpByID(r.Context(), chirpUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			writeError(w, http.StatusNotFound, "Chirp not found")
@@ -148,7 +157,7 @@ func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingChirp, err := h.apiConfig.Database.GetChirpByID(r.Context(), chirpUUID)
+	existingChirp, err := h.store.GetChirpByID(r.Context(), chirpUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			writeError(w, http.StatusNotFound, "Chirp not found")
@@ -166,7 +175,7 @@ func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.apiConfig.Database.DeleteChirpByID(r.Context(), chirpUUID)
+	err = h.store.DeleteChirpByID(r.Context(), chirpUUID)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to delete chirp by ID", err)
 		writeError(w, http.StatusInternalServerError, "Failed to delete chirp by ID")

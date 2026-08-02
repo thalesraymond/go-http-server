@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -12,10 +13,18 @@ import (
 
 type LoginHandler struct {
 	apiConfig *ApiConfig
+	store     loginStore
+}
+
+type loginStore interface {
+	GetUserByEmail(ctx context.Context, email string) (database.User, error)
+	CreateRefreshToken(ctx context.Context, arg database.CreateRefreshTokenParams) (database.RefreshToken, error)
+	GetRefreshTokenByID(ctx context.Context, token string) (database.RefreshToken, error)
+	RevokeRefreshToken(ctx context.Context, token string) error
 }
 
 func NewLoginHandler(apiConfig *ApiConfig) *LoginHandler {
-	return &LoginHandler{apiConfig: apiConfig}
+	return &LoginHandler{apiConfig: apiConfig, store: apiConfig.Database}
 }
 
 func (h *LoginHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -54,7 +63,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.apiConfig.Database.GetUserByEmail(r.Context(), request.Email)
+	user, err := h.store.GetUserByEmail(r.Context(), request.Email)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to get user by email", err)
 		writeError(w, http.StatusInternalServerError, "Incorrect email or password")
@@ -82,7 +91,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken, err := h.apiConfig.Database.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+	refreshToken, err := h.store.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
 		Token:     auth.MakeRefreshToken(),
 		UserID:    user.ID,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
@@ -113,7 +122,7 @@ func (h *LoginHandler) GetRefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken, err := h.apiConfig.Database.GetRefreshTokenByID(r.Context(), authHeader)
+	refreshToken, err := h.store.GetRefreshTokenByID(r.Context(), authHeader)
 
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to get refresh token", err)
@@ -158,7 +167,7 @@ func (h *LoginHandler) RevokeRefreshToken(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = h.apiConfig.Database.RevokeRefreshToken(r.Context(), authHeader)
+	err = h.store.RevokeRefreshToken(r.Context(), authHeader)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to remove refresh token", err)
 		writeError(w, http.StatusInternalServerError, "Failed to remove refresh token")

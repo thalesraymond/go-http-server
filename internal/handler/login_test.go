@@ -15,10 +15,6 @@ import (
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
-func newLoginTestApiConfig(db *MockDatabase) *ApiConfig {
-	return &ApiConfig{Database: db, Logger: &MockLogger{}, Secret: "test-secret"}
-}
-
 func TestHandlerLogin(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	storedUser := database.User{
@@ -131,9 +127,9 @@ func TestHandlerLogin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockDatabase{}
+			store := &mockLoginStore{}
 			if tt.getUserFn != nil {
-				mockDB.GetUserByEmailFn = tt.getUserFn
+				store.getUserByEmailFn = tt.getUserFn
 			}
 
 			if tt.checkPassFn != nil {
@@ -143,10 +139,10 @@ func TestHandlerLogin(t *testing.T) {
 			}
 
 			if tt.createRefreshToken != nil {
-				mockDB.CreateRefreshTokenFn = tt.createRefreshToken
+				store.createRefreshTokenFn = tt.createRefreshToken
 			}
 
-			h := NewLoginHandler(newLoginTestApiConfig(mockDB))
+			h := newTestLoginHandler(store)
 
 			req := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")

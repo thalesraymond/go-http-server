@@ -17,8 +17,8 @@ import (
 
 // --- helpers ---
 
-func newTestApiConfig(db *MockDatabase) *ApiConfig {
-	return &ApiConfig{Database: db, Logger: &MockLogger{}, Secret: "test-secret"}
+func newTestApiConfig() *ApiConfig {
+	return &ApiConfig{Database: &noopQuerier{}, Logger: &MockLogger{}, Secret: "test-secret"}
 }
 
 // --- User Tests ---
@@ -91,9 +91,9 @@ func TestHandlerCreateUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockDatabase{}
+			store := &mockUserStore{}
 			if tt.mockFn != nil {
-				mockDB.CreateUserFn = tt.mockFn
+				store.createUserFn = tt.mockFn
 			}
 
 			if tt.hashPasswordFn != nil {
@@ -102,7 +102,7 @@ func TestHandlerCreateUser(t *testing.T) {
 				auth.HashPassword = originalHashPassword
 			}
 
-			h := NewUserHandler(newTestApiConfig(mockDB))
+			h := newTestUserHandler(store)
 
 			req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
@@ -129,8 +129,7 @@ func TestHandlerCreateUser(t *testing.T) {
 
 func TestHandlerGetUsers(t *testing.T) {
 	t.Run("stub returns ok", func(t *testing.T) {
-		mockDB := &MockDatabase{}
-		h := NewUserHandler(newTestApiConfig(mockDB))
+		h := newTestUserHandler(nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/users", nil)
 		rr := httptest.NewRecorder()
@@ -145,8 +144,7 @@ func TestHandlerGetUsers(t *testing.T) {
 
 func TestHandlerGetUserByID(t *testing.T) {
 	t.Run("stub returns ok", func(t *testing.T) {
-		mockDB := &MockDatabase{}
-		h := NewUserHandler(newTestApiConfig(mockDB))
+		h := newTestUserHandler(nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/users/"+uuid.New().String(), nil)
 		rr := httptest.NewRecorder()
@@ -240,9 +238,9 @@ func TestHandlerUpdateUserByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockDatabase{}
+			store := &mockUserStore{}
 			if tt.mockFn != nil {
-				mockDB.UpdateUserFn = tt.mockFn
+				store.updateUserFn = tt.mockFn
 			}
 
 			if tt.hashPasswordFn != nil {
@@ -251,7 +249,7 @@ func TestHandlerUpdateUserByID(t *testing.T) {
 				auth.HashPassword = originalHashPassword
 			}
 
-			h := NewUserHandler(newTestApiConfig(mockDB))
+			h := newTestUserHandler(store)
 
 			req := httptest.NewRequest(http.MethodPut, "/api/users", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
@@ -282,8 +280,7 @@ func TestHandlerUpdateUserByID(t *testing.T) {
 
 func TestHandlerDeleteUserByID(t *testing.T) {
 	t.Run("stub returns ok", func(t *testing.T) {
-		mockDB := &MockDatabase{}
-		h := NewUserHandler(newTestApiConfig(mockDB))
+		h := newTestUserHandler(nil)
 
 		req := httptest.NewRequest(http.MethodDelete, "/api/users", nil)
 		rr := httptest.NewRecorder()
