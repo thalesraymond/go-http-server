@@ -19,6 +19,7 @@ type MockDatabase struct {
 	GetRefreshTokenByIDFn func(ctx context.Context, token string) (database.RefreshToken, error)
 	RevokeRefreshTokenFn  func(ctx context.Context, token string) error
 	UpdateUserFn          func(ctx context.Context, arg database.UpdateUserParams) (database.User, error)
+	DeleteChirpByIDFn     func(ctx context.Context, id uuid.UUID) error
 }
 
 func (m *MockDatabase) CreateChirp(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error) {
@@ -26,6 +27,13 @@ func (m *MockDatabase) CreateChirp(ctx context.Context, arg database.CreateChirp
 		return m.CreateChirpFn(ctx, arg)
 	}
 	return database.Chirp{}, nil
+}
+
+func (m *MockDatabase) DeleteChirpByID(ctx context.Context, id uuid.UUID) error {
+	if m.DeleteChirpByIDFn != nil {
+		return m.DeleteChirpByIDFn(ctx, id)
+	}
+	return nil
 }
 
 func (m *MockDatabase) CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error) {
