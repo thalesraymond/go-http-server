@@ -17,11 +17,11 @@ func NewUserHandler(apiConfig *ApiConfig) *UserHandler {
 }
 
 func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/users/", h.HandlerCreateUser)
-	mux.HandleFunc("GET /api/users/", h.HandlerGetUsers)
-	mux.HandleFunc("GET /api/users/", h.HandlerGetUserByID)
-	mux.HandleFunc("PUT /api/users/", h.HandlerUpdateUserByID)
-	mux.HandleFunc("DELETE /api/users/", h.HandlerDeleteUserByID)
+	mux.HandleFunc("POST /api/users", h.HandlerCreateUser)
+	mux.HandleFunc("GET /api/users", h.HandlerGetUsers)
+	mux.HandleFunc("GET /api/users/{id}", h.HandlerGetUserByID)
+	mux.HandleFunc("PUT /api/users", h.HandlerUpdateUserByID)
+	mux.HandleFunc("DELETE /api/users", h.HandlerDeleteUserByID)
 }
 
 type CreateUserRequest struct {
