@@ -273,17 +273,103 @@ func TestHandlerUpdateChirpByID(t *testing.T) {
 }
 
 func TestHandlerDeleteChirpByID(t *testing.T) {
-	t.Run("stub returns ok", func(t *testing.T) {
-		mockDB := &MockDatabase{}
-		h := NewChirpHandler(newTestApiConfig(mockDB))
+	now := time.Now().UTC().Truncate(time.Second)
+	userID := uuid.New()
+	otherUserID := uuid.New()
+	chirpID := uuid.New()
 
-		req := httptest.NewRequest(http.MethodDelete, "/api/chirps", nil)
-		rr := httptest.NewRecorder()
+	tests := []struct {
+		name         string
+		pathID       string
+		ctxUserID    uuid.UUID
+		mockGetFn    func(ctx context.Context, id uuid.UUID) (database.Chirp, error)
+		mockDeleteFn func(ctx context.Context, id uuid.UUID) error
+		wantStatus   int
+		wantBody     string
+	}{
+		{
+			name:       "missing id",
+			wantStatus: http.StatusBadRequest,
+			wantBody:   "Missing chirp ID",
+		},
+		{
+			name:       "invalid uuid",
+			pathID:     "not-a-uuid",
+			wantStatus: http.StatusBadRequest,
+			wantBody:   "Invalid chirp ID",
+		},
+		{
+			name:      "not found",
+			pathID:    chirpID.String(),
+			ctxUserID: userID,
+			mockGetFn: func(_ context.Context, _ uuid.UUID) (database.Chirp, error) {
+				return database.Chirp{}, sql.ErrNoRows
+			},
+			wantStatus: http.StatusNotFound,
+			wantBody:   "Chirp not found",
+		},
+		{
+			name:      "forbidden",
+			pathID:    chirpID.String(),
+			ctxUserID: userID,
+			mockGetFn: func(_ context.Context, _ uuid.UUID) (database.Chirp, error) {
+				return database.Chirp{ID: chirpID, Body: "hello", UserID: otherUserID, CreatedAt: now, UpdatedAt: now}, nil
+			},
+			wantStatus: http.StatusForbidden,
+			wantBody:   "not authorized",
+		},
+		{
+			name:      "delete error",
+			pathID:    chirpID.String(),
+			ctxUserID: userID,
+			mockGetFn: func(_ context.Context, _ uuid.UUID) (database.Chirp, error) {
+				return database.Chirp{ID: chirpID, Body: "hello", UserID: userID, CreatedAt: now, UpdatedAt: now}, nil
+			},
+			mockDeleteFn: func(_ context.Context, _ uuid.UUID) error {
+				return errors.New("db error")
+			},
+			wantStatus: http.StatusInternalServerError,
+			wantBody:   "Failed to delete chirp by ID",
+		},
+		{
+			name:      "success",
+			pathID:    chirpID.String(),
+			ctxUserID: userID,
+			mockGetFn: func(_ context.Context, _ uuid.UUID) (database.Chirp, error) {
+				return database.Chirp{ID: chirpID, Body: "hello", UserID: userID, CreatedAt: now, UpdatedAt: now}, nil
+			},
+			wantStatus: http.StatusNoContent,
+		},
+	}
 
-		h.DeleteChirpByID(rr, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockDB := &MockDatabase{}
+			if tt.mockGetFn != nil {
+				mockDB.GetChirpByIDFn = tt.mockGetFn
+			}
+			if tt.mockDeleteFn != nil {
+				mockDB.DeleteChirpByIDFn = tt.mockDeleteFn
+			}
 
-		if rr.Code != http.StatusOK {
-			t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
-		}
-	})
+			h := NewChirpHandler(newTestApiConfig(mockDB))
+
+			req := httptest.NewRequest(http.MethodDelete, "/api/chirps/"+tt.pathID, nil)
+			req.SetPathValue("id", tt.pathID)
+			if tt.ctxUserID != uuid.Nil {
+				ctx := context.WithValue(req.Context(), userIDKey, tt.ctxUserID)
+				req = req.WithContext(ctx)
+			}
+			rr := httptest.NewRecorder()
+
+			h.DeleteChirpByID(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if tt.wantBody != "" && !strings.Contains(rr.Body.String(), tt.wantBody) {
+				t.Errorf("body %q does not contain %q", rr.Body.String(), tt.wantBody)
+			}
+		})
+	}
 }
