@@ -22,7 +22,12 @@ func main() {
 		Handler: serverMux,
 	}
 
-	godotenv.Load()
+	err := godotenv.Load()
+
+	if err != nil {
+		fmt.Println("Error loading .env file:", err)
+		return
+	}
 
 	dbURL := os.Getenv("DB_URL")
 
@@ -32,7 +37,12 @@ func main() {
 		return
 	}
 
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			fmt.Println("Failed to close database:", err)
+		}
+	}()
 
 	apiConfig := handler.NewApiConfig(database.New(db))
 
