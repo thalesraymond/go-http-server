@@ -2,20 +2,45 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"sync/atomic"
 
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
+type Logger struct{ l *log.Logger }
+
+func (l *Logger) Error(msg string, err error) {
+	l.l.Printf("ERROR %s: %v", msg, err)
+}
+
+func (l *Logger) Info(msg string) {
+	l.l.Printf("INFO %s", msg)
+}
+
+func (l *Logger) Debug(msg string) {
+	l.l.Printf("DEBUG %s", msg)
+}
+
+func (l *Logger) Warn(msg string) {
+	l.l.Printf("WARN %s", msg)
+}
+
+func NewLogger() *Logger {
+	return &Logger{l: log.Default()}
+}
+
 type ApiConfig struct {
 	Database       *database.Queries
 	fileserverHits atomic.Int32
+	Logger         *Logger
 }
 
 func NewApiConfig(db *database.Queries) *ApiConfig {
 	return &ApiConfig{
 		Database: db,
+		Logger:   NewLogger(),
 	}
 }
 

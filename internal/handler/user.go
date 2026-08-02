@@ -39,6 +39,7 @@ func (h *UserHandler) HandlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	var userRequestData CreateUserRequest
 
 	if err := decodeJSON(w, r, &userRequestData); err != nil {
+		h.apiConfig.Logger.Error("Invalid request payload", err)
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
@@ -49,6 +50,7 @@ func (h *UserHandler) HandlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	})
 
 	if err != nil {
+		h.apiConfig.Logger.Error("Failed to create user", err)
 		writeError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}

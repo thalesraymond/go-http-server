@@ -59,8 +59,13 @@ func main() {
 	userHandler := handler.NewUserHandler(apiConfig)
 	userHandler.RegisterRoutes(serverMux)
 
+	chiprHandler := handler.NewChirpHandler(apiConfig)
+	chiprHandler.RegisterRoutes(serverMux)
+
+	apiConfig.Logger.Info("Starting server on :8080")
+
 	err = server.ListenAndServe()
 	if err != nil {
-		fmt.Println("Failed to start server:", err)
+		apiConfig.Logger.Error("Failed to start server", err)
 	}
 }
