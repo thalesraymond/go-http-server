@@ -12,6 +12,7 @@ type MockDatabase struct {
 	CreateChirpFn    func(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error)
 	CreateUserFn     func(ctx context.Context, arg database.CreateUserParams) (database.User, error)
 	DeleteAllUsersFn func(ctx context.Context) error
+	GetUserByEmailFn func(ctx context.Context, email string) (database.User, error)
 	GetAllChirpsFn   func(ctx context.Context) ([]database.Chirp, error)
 	GetChirpByIDFn   func(ctx context.Context, id uuid.UUID) (database.Chirp, error)
 }
@@ -35,6 +36,13 @@ func (m *MockDatabase) DeleteAllUsers(ctx context.Context) error {
 		return m.DeleteAllUsersFn(ctx)
 	}
 	return nil
+}
+
+func (m *MockDatabase) GetUserByEmail(ctx context.Context, email string) (database.User, error) {
+	if m.GetUserByEmailFn != nil {
+		return m.GetUserByEmailFn(ctx, email)
+	}
+	return database.User{}, nil
 }
 
 func (m *MockDatabase) GetAllChirps(ctx context.Context) ([]database.Chirp, error) {

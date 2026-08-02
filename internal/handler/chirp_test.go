@@ -99,7 +99,7 @@ func TestHandlerCreateChirp(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
 
-			h.HandlerCreateChirp(rr, req)
+			h.CreateChirp(rr, req)
 
 			if rr.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
@@ -160,7 +160,7 @@ func TestHandlerGetChirps(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/chirps", nil)
 			rr := httptest.NewRecorder()
 
-			h.HandlerGetChirps(rr, req)
+			h.GetChirps(rr, req)
 
 			if rr.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d", rr.Code, tt.wantStatus)
@@ -239,7 +239,7 @@ func TestHandlerGetChirpByID(t *testing.T) {
 			req.SetPathValue("id", tt.pathID)
 			rr := httptest.NewRecorder()
 
-			h.HandlerGetChirpByID(rr, req)
+			h.GetChirpByID(rr, req)
 
 			if rr.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
@@ -256,7 +256,7 @@ func TestHandlerUpdateChirpByID(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPut, "/api/chirps", nil)
 		rr := httptest.NewRecorder()
 
-		h.HandlerUpdateChirpByID(rr, req)
+		h.UpdateChirpByID(rr, req)
 
 		if rr.Code != http.StatusOK {
 			t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
@@ -272,7 +272,7 @@ func TestHandlerDeleteChirpByID(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, "/api/chirps", nil)
 		rr := httptest.NewRecorder()
 
-		h.HandlerDeleteChirpByID(rr, req)
+		h.DeleteChirpByID(rr, req)
 
 		if rr.Code != http.StatusOK {
 			t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)

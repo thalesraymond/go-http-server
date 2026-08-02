@@ -18,11 +18,13 @@ func NewUserHandler(apiConfig *ApiConfig) *UserHandler {
 }
 
 func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/users", h.HandlerCreateUser)
-	mux.HandleFunc("GET /api/users", h.HandlerGetUsers)
-	mux.HandleFunc("GET /api/users/{id}", h.HandlerGetUserByID)
-	mux.HandleFunc("PUT /api/users", h.HandlerUpdateUserByID)
-	mux.HandleFunc("DELETE /api/users", h.HandlerDeleteUserByID)
+	mux.HandleFunc("POST /api/users", h.CreateUser)
+	mux.HandleFunc("GET /api/users", h.GetUsers)
+	mux.HandleFunc("GET /api/users/{id}", h.GetUserByID)
+	mux.HandleFunc("PUT /api/users", h.UpdateUserByID)
+	mux.HandleFunc("DELETE /api/users", h.DeleteUserByID)
+
+	mux.HandleFunc("POST /api/login", h.Login)
 }
 
 type CreateUserRequest struct {
@@ -46,7 +48,7 @@ func toUserResponse(user database.User) UserResponse {
 	}
 }
 
-func (h *UserHandler) HandlerCreateUser(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var userRequestData CreateUserRequest
 
 	if err := decodeJSON(w, r, &userRequestData); err != nil {
@@ -79,18 +81,62 @@ func (h *UserHandler) HandlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusCreated, createdUserDTO)
 }
 
-func (h *UserHandler) HandlerGetUsers(w http.ResponseWriter, r *http.Request) {
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var request LoginRequest
+	err := decodeJSON(w, r, &request)
+
+	if err != nil {
+		h.apiConfig.Logger.Error("Invalid request payload", err)
+		writeError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if request.Email == "" || request.Password == "" {
+		h.apiConfig.Logger.Error("Email and password are required", nil)
+		writeError(w, http.StatusBadRequest, "email and password are required")
+		return
+	}
+
+	user, err := h.apiConfig.Database.GetUserByEmail(r.Context(), request.Email)
+	if err != nil {
+		h.apiConfig.Logger.Error("Failed to get user by email", err)
+		writeError(w, http.StatusInternalServerError, "Incorrect email or password")
+		return
+	}
+
+	match, err := auth.CheckPasswordHash(request.Password, user.HashedPassword)
+	if err != nil {
+		h.apiConfig.Logger.Error("Failed to check password hash", err)
+		writeError(w, http.StatusInternalServerError, "Incorrect email or password")
+		return
+	}
+
+	if !match {
+		h.apiConfig.Logger.Error("Incorrect password", nil)
+		writeError(w, http.StatusUnauthorized, "Incorrect email or password")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toUserResponse(user))
+}
+
+func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	// Implement the logic to get all users
 }
 
-func (h *UserHandler) HandlerGetUserByID(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	// Implement the logic to get a user by ID
 }
 
-func (h *UserHandler) HandlerUpdateUserByID(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
 	// Implement the logic to update a user by ID
 }
 
-func (h *UserHandler) HandlerDeleteUserByID(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) DeleteUserByID(w http.ResponseWriter, r *http.Request) {
 	// Implement the logic to delete a user by ID
 }

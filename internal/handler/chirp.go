@@ -18,11 +18,11 @@ func NewChirpHandler(apiConfig *ApiConfig) *ChirpHandler {
 }
 
 func (h *ChirpHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/chirps", h.HandlerCreateChirp)
-	mux.HandleFunc("GET /api/chirps", h.HandlerGetChirps)
-	mux.HandleFunc("GET /api/chirps/{id}", h.HandlerGetChirpByID)
-	mux.HandleFunc("PUT /api/chirps", h.HandlerUpdateChirpByID)
-	mux.HandleFunc("DELETE /api/chirps", h.HandlerDeleteChirpByID)
+	mux.HandleFunc("POST /api/chirps", h.CreateChirp)
+	mux.HandleFunc("GET /api/chirps", h.GetChirps)
+	mux.HandleFunc("GET /api/chirps/{id}", h.GetChirpByID)
+	mux.HandleFunc("PUT /api/chirps", h.UpdateChirpByID)
+	mux.HandleFunc("DELETE /api/chirps", h.DeleteChirpByID)
 }
 
 type CreateChirpRequest struct {
@@ -48,7 +48,7 @@ func toChirpResponse(chirp database.Chirp) ChirpResponse {
 	}
 }
 
-func (h *ChirpHandler) HandlerCreateChirp(w http.ResponseWriter, r *http.Request) {
+func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request) {
 	const maxChirpLength = 140
 
 	var chirpRequestData CreateChirpRequest
@@ -88,7 +88,7 @@ func (h *ChirpHandler) HandlerCreateChirp(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusCreated, createdChirpDTO)
 }
 
-func (h *ChirpHandler) HandlerGetChirps(w http.ResponseWriter, r *http.Request) {
+func (h *ChirpHandler) GetChirps(w http.ResponseWriter, r *http.Request) {
 	chirps, err := h.apiConfig.Database.GetAllChirps(r.Context())
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to get chirps", err)
@@ -104,7 +104,7 @@ func (h *ChirpHandler) HandlerGetChirps(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, chirpResponses)
 }
 
-func (h *ChirpHandler) HandlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
+func (h *ChirpHandler) GetChirpByID(w http.ResponseWriter, r *http.Request) {
 	chirpID := r.PathValue("id")
 	if chirpID == "" {
 		writeError(w, http.StatusBadRequest, "Missing chirp ID")
@@ -133,10 +133,10 @@ func (h *ChirpHandler) HandlerGetChirpByID(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, toChirpResponse(chirp))
 }
 
-func (h *ChirpHandler) HandlerUpdateChirpByID(w http.ResponseWriter, r *http.Request) {
+func (h *ChirpHandler) UpdateChirpByID(w http.ResponseWriter, r *http.Request) {
 	// Implement the logic to update a chirp by ID
 }
 
-func (h *ChirpHandler) HandlerDeleteChirpByID(w http.ResponseWriter, r *http.Request) {
+func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request) {
 	// Implement the logic to delete a chirp by ID
 }

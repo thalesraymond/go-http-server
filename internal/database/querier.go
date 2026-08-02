@@ -16,6 +16,7 @@ type Querier interface {
 	DeleteAllUsers(ctx context.Context) error
 	GetAllChirps(ctx context.Context) ([]Chirp, error)
 	GetChirpByID(ctx context.Context, id uuid.UUID) (Chirp, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)
