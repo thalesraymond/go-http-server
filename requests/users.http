@@ -17,7 +17,7 @@ Content-Type: application/json
 POST http://localhost:8080/api/login HTTP/1.1
 Content-Type: application/json
 
-{"email": "thales@example.com", "password": "newsecurepassword123"}
+{"email": "thales@example.com", "password": "securepassword123"}
 
 ### Login (invalid credentials)
 # Returns 401 Unauthorized when the email or password is incorrect

@@ -22,7 +22,7 @@ func (h *ChirpHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/chirps", h.GetChirps)
 	mux.HandleFunc("GET /api/chirps/{id}", h.GetChirpByID)
 	mux.HandleFunc("PUT /api/chirps", h.UpdateChirpByID)
-	mux.HandleFunc("DELETE /api/chirps", h.DeleteChirpByID)
+	mux.Handle("DELETE /api/chirps/{id}", h.apiConfig.AuthMiddleware(http.HandlerFunc(h.DeleteChirpByID)))
 }
 
 type CreateChirpRequest struct {
@@ -134,10 +134,48 @@ func (h *ChirpHandler) GetChirpByID(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toChirpResponse(chirp))
 }
 
-func (h *ChirpHandler) UpdateChirpByID(w http.ResponseWriter, r *http.Request) {
-	// Implement the logic to update a chirp by ID
+func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request) {
+	chirpID := r.PathValue("id")
+	if chirpID == "" {
+		writeError(w, http.StatusBadRequest, "Missing chirp ID")
+		return
+	}
+
+	chirpUUID, err := uuid.Parse(chirpID)
+	if err != nil {
+		h.apiConfig.Logger.Error("Invalid chirp ID", err)
+		writeError(w, http.StatusBadRequest, "Invalid chirp ID")
+		return
+	}
+
+	existingChirp, err := h.apiConfig.Database.GetChirpByID(r.Context(), chirpUUID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			writeError(w, http.StatusNotFound, "Chirp not found")
+			return
+		}
+
+		h.apiConfig.Logger.Error("Failed to get chirp by ID", err)
+		writeError(w, http.StatusInternalServerError, "Failed to get chirp by ID")
+		return
+	}
+
+	userID, _ := r.Context().Value(userIDKey).(uuid.UUID)
+	if existingChirp.UserID != userID {
+		writeError(w, http.StatusForbidden, "You are not authorized to delete this chirp")
+		return
+	}
+
+	err = h.apiConfig.Database.DeleteChirpByID(r.Context(), chirpUUID)
+	if err != nil {
+		h.apiConfig.Logger.Error("Failed to delete chirp by ID", err)
+		writeError(w, http.StatusInternalServerError, "Failed to delete chirp by ID")
+		return
+	}
+
+	writeJSON(w, http.StatusNoContent, map[string]string{"message": "Chirp deleted successfully"})
 }
 
-func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request) {
-	// Implement the logic to delete a chirp by ID
+func (h *ChirpHandler) UpdateChirpByID(w http.ResponseWriter, r *http.Request) {
+	// Implement the logic to update a chirp by ID
 }
