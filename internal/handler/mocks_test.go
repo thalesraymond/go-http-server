@@ -17,6 +17,7 @@ type MockDatabase struct {
 	GetChirpByIDFn        func(ctx context.Context, id uuid.UUID) (database.Chirp, error)
 	CreateRefreshTokenFn  func(ctx context.Context, arg database.CreateRefreshTokenParams) (database.RefreshToken, error)
 	GetRefreshTokenByIDFn func(ctx context.Context, token string) (database.RefreshToken, error)
+	RevokeRefreshTokenFn  func(ctx context.Context, token string) error
 }
 
 func (m *MockDatabase) CreateChirp(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error) {
@@ -73,6 +74,13 @@ func (m *MockDatabase) GetRefreshTokenByID(ctx context.Context, token string) (d
 		return m.GetRefreshTokenByIDFn(ctx, token)
 	}
 	return database.RefreshToken{}, nil
+}
+
+func (m *MockDatabase) RevokeRefreshToken(ctx context.Context, token string) error {
+	if m.RevokeRefreshTokenFn != nil {
+		return m.RevokeRefreshTokenFn(ctx, token)
+	}
+	return nil
 }
 
 // MockLogger implements Logger interface for testing

@@ -121,6 +121,12 @@ func (h *LoginHandler) GetRefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if refreshToken.RevokedAt.Valid {
+		h.apiConfig.Logger.Error("Refresh token revoked", nil)
+		writeError(w, http.StatusUnauthorized, "Refresh token revoked")
+		return
+	}
+
 	if refreshToken.ExpiresAt.Before(time.Now()) {
 		h.apiConfig.Logger.Error("Refresh token expired", nil)
 		writeError(w, http.StatusUnauthorized, "Refresh token expired")
@@ -152,7 +158,7 @@ func (h *LoginHandler) RevokeRefreshToken(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = h.apiConfig.Database.RemoveRefreshToken(r.Context(), authHeader)
+	err = h.apiConfig.Database.RevokeRefreshToken(r.Context(), authHeader)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to remove refresh token", err)
 		writeError(w, http.StatusInternalServerError, "Failed to remove refresh token")
