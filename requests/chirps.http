@@ -12,7 +12,18 @@ Content-Type: application/json
 
 {invalid json}
 
-
 ### Get All Chirps
 # Returns a list of all chirps
 GET http://localhost:8080/api/chirps HTTP/1.1
+
+### Get Chirp by ID
+# Returns a chirp by its ID
+GET http://localhost:8080/api/chirps/051db75b-744b-4226-8def-e15d0f5dfa5e HTTP/1.1
+
+### Get Chirp by ID (not found)
+# Returns 404 Not Found when the chirp with the specified ID does not exist
+GET http://localhost:8080/api/chirps/00000000-0000-0000-0000-000000000000 HTTP/1.1
+
+### Get Chirp by ID (invalid UUID)
+# Returns 400 Bad Request when the chirp ID is not a valid UUID
+GET http://localhost:8080/api/chirps/invalid-uuid HTTP/1.1

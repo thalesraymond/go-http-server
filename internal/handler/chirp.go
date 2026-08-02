@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -90,7 +91,32 @@ func (h *ChirpHandler) HandlerGetChirps(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *ChirpHandler) HandlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
-	// Implement the logic to get a chirp by ID
+	chirpID := r.PathValue("id")
+	if chirpID == "" {
+		writeError(w, http.StatusBadRequest, "Missing chirp ID")
+		return
+	}
+
+	chirpUUID, err := uuid.Parse(chirpID)
+	if err != nil {
+		h.apiConfig.Logger.Error("Invalid chirp ID", err)
+		writeError(w, http.StatusBadRequest, "Invalid chirp ID")
+		return
+	}
+
+	chirp, err := h.apiConfig.Database.GetChirpByID(r.Context(), chirpUUID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			writeError(w, http.StatusNotFound, "Chirp not found")
+			return
+		}
+
+		h.apiConfig.Logger.Error("Failed to get chirp by ID", err)
+		writeError(w, http.StatusInternalServerError, "Failed to get chirp by ID")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toChirpResponse(chirp))
 }
 
 func (h *ChirpHandler) HandlerUpdateChirpByID(w http.ResponseWriter, r *http.Request) {
