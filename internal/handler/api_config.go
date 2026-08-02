@@ -43,9 +43,15 @@ func (cfg *ApiConfig) HandlerMetrics(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *ApiConfig) HandlerReset(w http.ResponseWriter, r *http.Request) {
 	cfg.fileserverHits.Store(0)
+
+	cfg.Database.DeleteAllUsers(r.Context())
+
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+
 	w.WriteHeader(http.StatusOK)
+
 	_, err := w.Write([]byte("OK"))
+
 	if err != nil {
 		http.Error(w, "Failed to write response", http.StatusInternalServerError)
 	}

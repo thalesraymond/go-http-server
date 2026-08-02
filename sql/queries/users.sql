@@ -9,3 +9,6 @@ INSERT INTO
 VALUES ($1, $2, NOW(), NOW())
 RETURNING
     *;
+
+-- name: DeleteAllUsers :exec
+DELETE FROM users;
