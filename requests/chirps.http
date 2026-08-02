@@ -3,7 +3,7 @@
 POST http://localhost:8080/api/chirps HTTP/1.1
 Content-Type: application/json
 
-{"body": "Hello, world!", "user_id": "00000000-0000-0000-0000-000000000000"}
+{"body": "Hello, world!", "user_id": "3bcebb56-84af-4697-8e66-f930b4653e09"}
 
 ### Create Chirp (invalid payload)
 # Returns 400 Bad Request when the JSON payload is malformed
@@ -11,3 +11,8 @@ POST http://localhost:8080/api/chirps HTTP/1.1
 Content-Type: application/json
 
 {invalid json}
+
+
+### Get All Chirps
+# Returns a list of all chirps
+GET http://localhost:8080/api/chirps HTTP/1.1

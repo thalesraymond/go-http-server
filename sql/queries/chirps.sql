@@ -10,3 +10,6 @@ INSERT INTO
 VALUES ($1, $2, $3, NOW(), NOW())
 RETURNING
     *;
+
+-- name: GetAllChirps :many
+SELECT * FROM chirps ORDER BY created_at ASC;

@@ -35,6 +35,15 @@ type UserResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+func toUserResponse(user database.User) UserResponse {
+	return UserResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+}
+
 func (h *UserHandler) HandlerCreateUser(w http.ResponseWriter, r *http.Request) {
 	var userRequestData CreateUserRequest
 
@@ -55,12 +64,7 @@ func (h *UserHandler) HandlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	createdUserDTO := UserResponse{
-		ID:        createdUser.ID,
-		Email:     createdUser.Email,
-		CreatedAt: createdUser.CreatedAt,
-		UpdatedAt: createdUser.UpdatedAt,
-	}
+	createdUserDTO := toUserResponse(createdUser)
 
 	writeJSON(w, http.StatusCreated, createdUserDTO)
 }

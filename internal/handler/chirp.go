@@ -37,6 +37,16 @@ type ChirpResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+func toChirpResponse(chirp database.Chirp) ChirpResponse {
+	return ChirpResponse{
+		ID:        chirp.ID,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+	}
+}
+
 func (h *ChirpHandler) HandlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 	var chirpRequestData CreateChirpRequest
 
@@ -58,19 +68,25 @@ func (h *ChirpHandler) HandlerCreateChirp(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	createdChirpDTO := ChirpResponse{
-		ID:        createdChirp.ID,
-		Body:      createdChirp.Body,
-		UserID:    createdChirp.UserID,
-		CreatedAt: createdChirp.CreatedAt,
-		UpdatedAt: createdChirp.UpdatedAt,
-	}
+	createdChirpDTO := toChirpResponse(createdChirp)
 
 	writeJSON(w, http.StatusCreated, createdChirpDTO)
 }
 
 func (h *ChirpHandler) HandlerGetChirps(w http.ResponseWriter, r *http.Request) {
-	// Implement the logic to get all chirps
+	chirps, err := h.apiConfig.Database.GetAllChirps(r.Context())
+	if err != nil {
+		h.apiConfig.Logger.Error("Failed to get chirps", err)
+		writeError(w, http.StatusInternalServerError, "Failed to get chirps")
+		return
+	}
+
+	chirpResponses := make([]ChirpResponse, 0)
+	for _, chirp := range chirps {
+		chirpResponses = append(chirpResponses, toChirpResponse(chirp))
+	}
+
+	writeJSON(w, http.StatusOK, chirpResponses)
 }
 
 func (h *ChirpHandler) HandlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
