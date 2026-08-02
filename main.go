@@ -1,11 +1,17 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"sync/atomic"
 
+	"github.com/joho/godotenv"
+	"github.com/thalesraymond/go-http-server/internal/database"
 	"github.com/thalesraymond/go-http-server/internal/handler"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -19,6 +25,20 @@ func main() {
 
 	apiConfig := &apiConfig{}
 
+	godotenv.Load()
+
+	dbURL := os.Getenv("DB_URL")
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		fmt.Println("Failed to connect to database:", err)
+		return
+	}
+
+	defer db.Close()
+
+	apiConfig.Database = database.New(db)
+
 	serverMux.Handle("/app/", apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./")))))
 
 	serverMux.HandleFunc("GET /api/healthz", handler.HealthzHandler)
@@ -29,13 +49,14 @@ func main() {
 
 	serverMux.HandleFunc("POST /api/validate_chirp", handler.ValidateChirpHandler)
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		fmt.Println("Failed to start server:", err)
 	}
 }
 
 type apiConfig struct {
+	Database       *database.Queries
 	fileserverHits atomic.Int32
 }
 
