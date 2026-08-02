@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
@@ -29,7 +30,7 @@ func TestHandlerCreateChirp(t *testing.T) {
 	}{
 		{
 			name: "valid chirp",
-			body: `{"body":"hello world","user_id":"` + userID.String() + `"}`,
+			body: `{"body":"hello world"}`,
 			mockFn: func(_ context.Context, arg database.CreateChirpParams) (database.Chirp, error) {
 				return database.Chirp{
 					ID:        arg.ID,
@@ -50,19 +51,19 @@ func TestHandlerCreateChirp(t *testing.T) {
 		},
 		{
 			name:       "empty body",
-			body:       `{"body":"","user_id":"` + userID.String() + `"}`,
+			body:       `{"body":""}`,
 			wantStatus: http.StatusBadRequest,
 			wantBody:   "Chirp body cannot be empty",
 		},
 		{
 			name:       "too long body",
-			body:       `{"body":"` + strings.Repeat("a", 141) + `","user_id":"` + userID.String() + `"}`,
+			body:       `{"body":"` + strings.Repeat("a", 141) + `"}`,
 			wantStatus: http.StatusBadRequest,
 			wantBody:   "140",
 		},
 		{
 			name: "profanity cleaned",
-			body: `{"body":"what a kerfuffle","user_id":"` + userID.String() + `"}`,
+			body: `{"body":"what a kerfuffle"}`,
 			mockFn: func(_ context.Context, arg database.CreateChirpParams) (database.Chirp, error) {
 				return database.Chirp{
 					ID:        arg.ID,
@@ -77,7 +78,7 @@ func TestHandlerCreateChirp(t *testing.T) {
 		},
 		{
 			name: "database error",
-			body: `{"body":"hello","user_id":"` + userID.String() + `"}`,
+			body: `{"body":"hello"}`,
 			mockFn: func(_ context.Context, _ database.CreateChirpParams) (database.Chirp, error) {
 				return database.Chirp{}, errors.New("db error")
 			},
@@ -93,10 +94,17 @@ func TestHandlerCreateChirp(t *testing.T) {
 				mockDB.CreateChirpFn = tt.mockFn
 			}
 
-			h := NewChirpHandler(newTestApiConfig(mockDB))
+			cfg := newTestApiConfig(mockDB)
+			h := NewChirpHandler(cfg)
+
+			token, err := auth.MakeJWT(userID, cfg.Secret, time.Hour)
+			if err != nil {
+				t.Fatalf("make jwt: %v", err)
+			}
 
 			req := httptest.NewRequest(http.MethodPost, "/api/chirps", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+token)
 			rr := httptest.NewRecorder()
 
 			h.CreateChirp(rr, req)

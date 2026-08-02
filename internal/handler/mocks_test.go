@@ -9,12 +9,14 @@ import (
 
 // MockDatabase implements database.Querier for testing
 type MockDatabase struct {
-	CreateChirpFn    func(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error)
-	CreateUserFn     func(ctx context.Context, arg database.CreateUserParams) (database.User, error)
-	DeleteAllUsersFn func(ctx context.Context) error
-	GetUserByEmailFn func(ctx context.Context, email string) (database.User, error)
-	GetAllChirpsFn   func(ctx context.Context) ([]database.Chirp, error)
-	GetChirpByIDFn   func(ctx context.Context, id uuid.UUID) (database.Chirp, error)
+	CreateChirpFn         func(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error)
+	CreateUserFn          func(ctx context.Context, arg database.CreateUserParams) (database.User, error)
+	DeleteAllUsersFn      func(ctx context.Context) error
+	GetUserByEmailFn      func(ctx context.Context, email string) (database.User, error)
+	GetAllChirpsFn        func(ctx context.Context) ([]database.Chirp, error)
+	GetChirpByIDFn        func(ctx context.Context, id uuid.UUID) (database.Chirp, error)
+	CreateRefreshTokenFn  func(ctx context.Context, arg database.CreateRefreshTokenParams) (database.RefreshToken, error)
+	GetRefreshTokenByIDFn func(ctx context.Context, token string) (database.RefreshToken, error)
 }
 
 func (m *MockDatabase) CreateChirp(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error) {
@@ -57,6 +59,20 @@ func (m *MockDatabase) GetChirpByID(ctx context.Context, id uuid.UUID) (database
 		return m.GetChirpByIDFn(ctx, id)
 	}
 	return database.Chirp{}, nil
+}
+
+func (m *MockDatabase) CreateRefreshToken(ctx context.Context, arg database.CreateRefreshTokenParams) (database.RefreshToken, error) {
+	if m.CreateRefreshTokenFn != nil {
+		return m.CreateRefreshTokenFn(ctx, arg)
+	}
+	return database.RefreshToken{}, nil
+}
+
+func (m *MockDatabase) GetRefreshTokenByID(ctx context.Context, token string) (database.RefreshToken, error) {
+	if m.GetRefreshTokenByIDFn != nil {
+		return m.GetRefreshTokenByIDFn(ctx, token)
+	}
+	return database.RefreshToken{}, nil
 }
 
 // MockLogger implements Logger interface for testing

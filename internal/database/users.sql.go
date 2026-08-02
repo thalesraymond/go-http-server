@@ -69,3 +69,12 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	)
 	return i, err
 }
+
+const removeRefreshToken = `-- name: RemoveRefreshToken :exec
+DELETE FROM refresh_tokens WHERE token = $1
+`
+
+func (q *Queries) RemoveRefreshToken(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, removeRefreshToken, token)
+	return err
+}

@@ -59,6 +59,9 @@ func main() {
 	userHandler := handler.NewUserHandler(apiConfig)
 	userHandler.RegisterRoutes(serverMux)
 
+	loginHandler := handler.NewLoginHandler(apiConfig)
+	loginHandler.RegisterRoutes(serverMux)
+
 	chiprHandler := handler.NewChirpHandler(apiConfig)
 	chiprHandler.RegisterRoutes(serverMux)
 

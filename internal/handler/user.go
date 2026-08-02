@@ -23,8 +23,6 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/users/{id}", h.GetUserByID)
 	mux.HandleFunc("PUT /api/users", h.UpdateUserByID)
 	mux.HandleFunc("DELETE /api/users", h.DeleteUserByID)
-
-	mux.HandleFunc("POST /api/login", h.Login)
 }
 
 type CreateUserRequest struct {
@@ -79,78 +77,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	createdUserDTO := toUserResponse(createdUser)
 
 	writeJSON(w, http.StatusCreated, createdUserDTO)
-}
-
-type LoginRequest struct {
-	Email            string `json:"email"`
-	Password         string `json:"password"`
-	ExpiresInSeconds *int64 `json:"expires_in_seconds,omitempty"` // Expiration time in seconds
-}
-
-type LoginResponse struct {
-	Id        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	Token     string    `json:"token"`
-}
-
-func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var request LoginRequest
-	err := decodeJSON(w, r, &request)
-
-	if err != nil {
-		h.apiConfig.Logger.Error("Invalid request payload", err)
-		writeError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	if request.Email == "" || request.Password == "" {
-		h.apiConfig.Logger.Error("Email and password are required", nil)
-		writeError(w, http.StatusBadRequest, "email and password are required")
-		return
-	}
-
-	user, err := h.apiConfig.Database.GetUserByEmail(r.Context(), request.Email)
-	if err != nil {
-		h.apiConfig.Logger.Error("Failed to get user by email", err)
-		writeError(w, http.StatusInternalServerError, "Incorrect email or password")
-		return
-	}
-
-	match, err := auth.CheckPasswordHash(request.Password, user.HashedPassword)
-	if err != nil {
-		h.apiConfig.Logger.Error("Failed to check password hash", err)
-		writeError(w, http.StatusInternalServerError, "Incorrect email or password")
-		return
-	}
-
-	if !match {
-		h.apiConfig.Logger.Error("Incorrect password", nil)
-		writeError(w, http.StatusUnauthorized, "Incorrect email or password")
-		return
-	}
-	
-	var expiration time.Duration
-	if request.ExpiresInSeconds != nil && *request.ExpiresInSeconds > 0 && *request.ExpiresInSeconds <= 3600 {
-		expiration = time.Duration(*request.ExpiresInSeconds) * time.Second
-	} else {
-		expiration = time.Hour
-	}
-	token, err := auth.MakeJWT(user.ID, h.apiConfig.Secret, expiration)
-	if err != nil {
-		h.apiConfig.Logger.Error("Failed to generate JWT", err)
-		writeError(w, http.StatusInternalServerError, "Failed to generate token")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, LoginResponse{
-		Id:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
-	})
 }
 
 func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
