@@ -3,7 +3,7 @@
 POST http://localhost:8080/api/users HTTP/1.1
 Content-Type: application/json
 
-{"email": "john_3@example.com"}
+{"email": "thales@example.com", "password": "securepassword123"}
 
 ### Create User (invalid payload)
 # Returns 400 Bad Request when the JSON payload is malformed

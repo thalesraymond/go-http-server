@@ -40,8 +40,11 @@ func TestHandlerCreateUser(t *testing.T) {
 	}{
 		{
 			name: "valid user",
-			body: `{"email":"test@example.com"}`,
-			mockFn: func(_ context.Context, _ database.CreateUserParams) (database.User, error) {
+			body: `{"email":"test@example.com","password":"secret123"}`,
+			mockFn: func(_ context.Context, arg database.CreateUserParams) (database.User, error) {
+				if arg.Email != "test@example.com" || arg.HashedPassword == "" {
+					return database.User{}, errors.New("unexpected params")
+				}
 				return wantUser, nil
 			},
 			wantStatus: http.StatusCreated,
@@ -53,16 +56,27 @@ func TestHandlerCreateUser(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 		},
 		{
-			name:       "empty email still succeeds",
-			body:       `{"email":""}`,
+			name: "empty email still succeeds",
+			body: `{"email":"","password":"secret123"}`,
+			mockFn: func(_ context.Context, arg database.CreateUserParams) (database.User, error) {
+				if arg.HashedPassword == "" {
+					return database.User{}, errors.New("password not hashed")
+				}
+				return wantUser, nil
+			},
 			wantStatus: http.StatusCreated,
 		},
 		{
 			name: "database error",
-			body: `{"email":"fail@example.com"}`,
+			body: `{"email":"fail@example.com","password":"secret123"}`,
 			mockFn: func(_ context.Context, _ database.CreateUserParams) (database.User, error) {
 				return database.User{}, errors.New("db error")
 			},
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "password hashing error",
+			body:       `{"email":"test@example.com","password":""}`,
 			wantStatus: http.StatusInternalServerError,
 		},
 	}

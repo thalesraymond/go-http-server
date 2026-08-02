@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
@@ -25,7 +26,8 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 type CreateUserRequest struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type UserResponse struct {
@@ -53,9 +55,17 @@ func (h *UserHandler) HandlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	hashedPassword, err := auth.HashPassword(userRequestData.Password)
+	if err != nil {
+		h.apiConfig.Logger.Error("Failed to hash password", err)
+		writeError(w, http.StatusInternalServerError, "Failed to create user")
+		return
+	}
+
 	createdUser, err := h.apiConfig.Database.CreateUser(r.Context(), database.CreateUserParams{
-		ID:    uuid.New(),
-		Email: userRequestData.Email,
+		ID:             uuid.New(),
+		Email:          userRequestData.Email,
+		HashedPassword: hashedPassword,
 	})
 
 	if err != nil {
