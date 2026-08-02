@@ -49,6 +49,8 @@ func toChirpResponse(chirp database.Chirp) ChirpResponse {
 }
 
 func (h *ChirpHandler) HandlerCreateChirp(w http.ResponseWriter, r *http.Request) {
+	const maxChirpLength = 140
+
 	var chirpRequestData CreateChirpRequest
 
 	if err := decodeJSON(w, r, &chirpRequestData); err != nil {
@@ -57,9 +59,21 @@ func (h *ChirpHandler) HandlerCreateChirp(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if len(chirpRequestData.Body) == 0 {
+		writeError(w, http.StatusBadRequest, "Chirp body cannot be empty")
+		return
+	}
+
+	if len(chirpRequestData.Body) > maxChirpLength {
+		writeError(w, http.StatusBadRequest, "Chirp body exceeds maximum length of 140 characters")
+		return
+	}
+
+	result := containsProfanity(chirpRequestData.Body)
+
 	createdChirp, err := h.apiConfig.Database.CreateChirp(r.Context(), database.CreateChirpParams{
 		ID:     uuid.New(),
-		Body:   chirpRequestData.Body,
+		Body:   result.CleanedBody,
 		UserID: chirpRequestData.UserID,
 	})
 

@@ -9,35 +9,42 @@ import (
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
-type Logger struct{ l *log.Logger }
+type Logger interface {
+	Error(msg string, err error)
+	Info(msg string)
+	Debug(msg string)
+	Warn(msg string)
+}
 
-func (l *Logger) Error(msg string, err error) {
+type defaultLogger struct{ l *log.Logger }
+
+func (l *defaultLogger) Error(msg string, err error) {
 	l.l.Printf("ERROR %s: %v", msg, err)
 }
 
-func (l *Logger) Info(msg string) {
+func (l *defaultLogger) Info(msg string) {
 	l.l.Printf("INFO %s", msg)
 }
 
-func (l *Logger) Debug(msg string) {
+func (l *defaultLogger) Debug(msg string) {
 	l.l.Printf("DEBUG %s", msg)
 }
 
-func (l *Logger) Warn(msg string) {
+func (l *defaultLogger) Warn(msg string) {
 	l.l.Printf("WARN %s", msg)
 }
 
-func NewLogger() *Logger {
-	return &Logger{l: log.Default()}
+func NewLogger() Logger {
+	return &defaultLogger{l: log.Default()}
 }
 
 type ApiConfig struct {
-	Database       *database.Queries
+	Database       database.Querier
 	fileserverHits atomic.Int32
-	Logger         *Logger
+	Logger         Logger
 }
 
-func NewApiConfig(db *database.Queries) *ApiConfig {
+func NewApiConfig(db database.Querier) *ApiConfig {
 	return &ApiConfig{
 		Database: db,
 		Logger:   NewLogger(),
