@@ -69,13 +69,18 @@ func (cfg *ApiConfig) HandlerMetrics(w http.ResponseWriter, r *http.Request) {
 func (cfg *ApiConfig) HandlerReset(w http.ResponseWriter, r *http.Request) {
 	cfg.fileserverHits.Store(0)
 
-	cfg.Database.DeleteAllUsers(r.Context())
+	err := cfg.Database.DeleteAllUsers(r.Context())
+	if err != nil {
+		cfg.Logger.Error("Failed to delete all users", err)
+		http.Error(w, "Failed to delete all users", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 
 	w.WriteHeader(http.StatusOK)
 
-	_, err := w.Write([]byte("OK"))
+	_, err = w.Write([]byte("OK"))
 
 	if err != nil {
 		http.Error(w, "Failed to write response", http.StatusInternalServerError)
