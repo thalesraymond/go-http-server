@@ -173,6 +173,25 @@ func newTestChirpHandler(store *mockChirpStore) (*ApiConfig, *ChirpHandler) {
 	return cfg, h
 }
 
+type mockPolkaStore struct {
+	updateChirpyRedFlagFn func(ctx context.Context, arg database.UpdateChirpyRedFlagParams) (database.User, error)
+}
+
+func (m *mockPolkaStore) UpdateChirpyRedFlag(ctx context.Context, arg database.UpdateChirpyRedFlagParams) (database.User, error) {
+	if m.updateChirpyRedFlagFn != nil {
+		return m.updateChirpyRedFlagFn(ctx, arg)
+	}
+	return database.User{}, nil
+}
+
+func newTestPolkaHandler(store *mockPolkaStore) *PolkaHandler {
+	h := NewPolkaHandler(newTestApiConfig())
+	if store != nil {
+		h.store = store
+	}
+	return h
+}
+
 // MockLogger implements Logger interface for testing
 type MockLogger struct {
 	ErrorFn func(msg string, err error)
