@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -168,6 +169,127 @@ func TestHandlerLogin(t *testing.T) {
 				if resp.RefreshToken == "" {
 					t.Errorf("refresh token is empty")
 				}
+			}
+		})
+	}
+}
+
+func TestHandlerGetRefreshTokenMissingAuth(t *testing.T) {
+	cases := []struct {
+		name       string
+		authHeader string
+		wantStatus int
+		wantBody   string
+	}{
+		{
+			name:       "missing header",
+			authHeader: "",
+			wantStatus: http.StatusUnauthorized,
+			wantBody:   "Invalid Authorization header",
+		},
+		{
+			name:       "malformed header",
+			authHeader: "Bearer",
+			wantStatus: http.StatusUnauthorized,
+			wantBody:   "Invalid Authorization header",
+		},
+		{
+			name:       "non-bearer scheme",
+			authHeader: "Basic abc123",
+			wantStatus: http.StatusUnauthorized,
+			wantBody:   "Invalid Authorization header",
+		},
+	}
+
+	h := newTestLoginHandler(nil)
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/refresh", nil)
+			req.Header.Set("Authorization", tt.authHeader)
+			rr := httptest.NewRecorder()
+
+			h.GetRefreshToken(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if !strings.Contains(rr.Body.String(), tt.wantBody) {
+				t.Errorf("body %q does not contain %q", rr.Body.String(), tt.wantBody)
+			}
+		})
+	}
+}
+
+func TestHandlerRevokeRefreshTokenSuccess(t *testing.T) {
+	store := &mockLoginStore{}
+	revoked := false
+	store.revokeRefreshTokenFn = func(_ context.Context, _ string) error {
+		revoked = true
+		return nil
+	}
+
+	h := newTestLoginHandler(store)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/revoke", nil)
+	req.Header.Set("Authorization", "Bearer some-refresh-token")
+	rr := httptest.NewRecorder()
+
+	h.RevokeRefreshToken(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want %d; body: %s", rr.Code, http.StatusNoContent, rr.Body.String())
+	}
+	if rr.Body.Len() != 0 {
+		t.Errorf("body = %q, want empty (204 must have no body)", rr.Body.String())
+	}
+	if !revoked {
+		t.Errorf("store.RevokeRefreshToken was not called")
+	}
+}
+
+func TestHandlerRevokeRefreshTokenMissingAuth(t *testing.T) {
+	cases := []struct {
+		name       string
+		authHeader string
+		wantStatus int
+		wantBody   string
+	}{
+		{
+			name:       "missing header",
+			authHeader: "",
+			wantStatus: http.StatusUnauthorized,
+			wantBody:   "Invalid Authorization header",
+		},
+		{
+			name:       "malformed header",
+			authHeader: "Bearer",
+			wantStatus: http.StatusUnauthorized,
+			wantBody:   "Invalid Authorization header",
+		},
+		{
+			name:       "non-bearer scheme",
+			authHeader: "Basic abc123",
+			wantStatus: http.StatusUnauthorized,
+			wantBody:   "Invalid Authorization header",
+		},
+	}
+
+	h := newTestLoginHandler(nil)
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/revoke", nil)
+			req.Header.Set("Authorization", tt.authHeader)
+			rr := httptest.NewRecorder()
+
+			h.RevokeRefreshToken(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
+			}
+			if !strings.Contains(rr.Body.String(), tt.wantBody) {
+				t.Errorf("body %q does not contain %q", rr.Body.String(), tt.wantBody)
 			}
 		})
 	}

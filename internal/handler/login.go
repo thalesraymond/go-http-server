@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -114,7 +113,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LoginHandler) GetRefreshToken(w http.ResponseWriter, r *http.Request) {
-	authHeader, err := getRefreshTokenFromHeader(r)
+	refreshTokenValue, err := auth.GetBearerToken(r.Header)
 
 	if err != nil {
 		h.apiConfig.Logger.Error("Invalid Authorization header", err)
@@ -122,7 +121,7 @@ func (h *LoginHandler) GetRefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken, err := h.store.GetRefreshTokenByID(r.Context(), authHeader)
+	refreshToken, err := h.store.GetRefreshTokenByID(r.Context(), refreshTokenValue)
 
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to get refresh token", err)
@@ -159,7 +158,7 @@ func (h *LoginHandler) GetRefreshToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LoginHandler) RevokeRefreshToken(w http.ResponseWriter, r *http.Request) {
-	authHeader, err := getRefreshTokenFromHeader(r)
+	refreshTokenValue, err := auth.GetBearerToken(r.Header)
 
 	if err != nil {
 		h.apiConfig.Logger.Error("Invalid Authorization header", err)
@@ -167,22 +166,12 @@ func (h *LoginHandler) RevokeRefreshToken(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = h.store.RevokeRefreshToken(r.Context(), authHeader)
+	err = h.store.RevokeRefreshToken(r.Context(), refreshTokenValue)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to remove refresh token", err)
 		writeError(w, http.StatusInternalServerError, "Failed to remove refresh token")
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func getRefreshTokenFromHeader(r *http.Request) (string, error) {
-	authHeader := r.Header.Get("Authorization")
-
-	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
-		return authHeader[7:], nil
-	} else {
-		return "", errors.New("invalid Authorization header")
-	}
+	writeNoContent(w)
 }

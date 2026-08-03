@@ -182,7 +182,7 @@ func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusNoContent, map[string]string{"message": "Chirp deleted successfully"})
+	writeNoContent(w)
 }
 
 func (h *ChirpHandler) UpdateChirpByID(w http.ResponseWriter, r *http.Request) {
