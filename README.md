@@ -1,5 +1,9 @@
 # Go HTTP Server
 
+[![CI](https://github.com/thalesraymond/go-http-server/actions/workflows/ci.yml/badge.svg)](https://github.com/thalesraymond/go-http-server/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/thalesraymond/go-http-server)](https://go.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A RESTful API server built in Go as part of the [boot.dev](https://boot.dev) backend course. This project demonstrates core concepts in HTTP server development, database integration, and API design using Go's standard library and PostgreSQL.
 
 ## About
@@ -11,52 +15,74 @@ This project is part of the boot.dev curriculum for learning Go and backend deve
 - **HTTP Server** — Built using Go's `net/http` package with Go 1.22+ route patterns
 - **PostgreSQL Integration** — Database layer using `database/sql` with `lib/pq` driver
 - **Type-safe SQL** — Generated queries via [sqlc](https://sqlc.dev/)
+- **Database Migrations** — Managed with [goose](https://github.com/pressly/goose)
 - **User Management** — Registration and authentication endpoints
+- **Authentication** — Password hashing (argon2id), JWT access tokens, refresh tokens with revoke
 - **Chirp API** — Create, read, update, and delete chirps (tweets)
+- **Webhooks** — Polka webhook endpoint for external event handling
 - **Input Validation** — Chirp content validation
 - **Metrics** — Request counting and health check endpoints
+- **Middleware** — Auth middleware for protected routes
 - **Static File Serving** — Serves HTML files from the project root
 
 ## Project Structure
 
 ```
-├── main.go                 # Server entry point & route registration
+├── main.go                       # Server entry point & route registration
 ├── internal/
-│   ├── database/           # Generated sqlc database layer
+│   ├── auth/                     # Auth primitives
+│   │   ├── hashing.go            # Argon2id password hashing
+│   │   ├── jwt.go                # JWT access tokens
+│   │   └── refresh_token.go      # Opaque refresh tokens
+│   ├── database/                 # Generated sqlc database layer
 │   │   ├── db.go
 │   │   ├── models.go
 │   │   ├── users.sql.go
-│   │   └── chirps.sql.go
-│   └── handler/            # HTTP handlers & middleware
-│       ├── api_config.go   # Shared config (DB, metrics)
-│       ├── user.go         # User endpoints
-│       ├── chirp.go        # Chirp endpoints
-│       ├── healthz.go      # Health check
-│       ├── respond.go      # Response helpers
-│       └── validate_chirp.go
+│   │   ├── chirps.sql.go
+│   │   └── refresh_tokens.sql.go
+│   └── handler/                  # HTTP handlers & middleware
+│       ├── api_config.go         # Shared config (DB, metrics, logger)
+│       ├── user.go               # User endpoints
+│       ├── login.go              # Login / refresh / revoke endpoints
+│       ├── chirp.go              # Chirp endpoints
+│       ├── polka.go              # Polka webhook handler
+│       ├── middleware.go         # Auth middleware
+│       ├── healthz.go            # Health check
+│       ├── respond.go            # Response helpers
+│       └── validate_chirp.go     # Chirp content validation
 ├── sql/
-│   ├── schema/             # Database migrations
-│   └── queries/            # sqlc query definitions
-└── requests/               # HTTP request examples (REST Client)
+│   ├── schema/                   # Goose migration files
+│   └── queries/                  # sqlc query definitions
+├── requests/                     # REST Client request examples
+└── goose.sh                      # Wrapper to run goose with .env
 ```
 
 ## API Endpoints
 
-| Method | Endpoint              | Description            |
-| ------ | --------------------- | ---------------------- |
-| GET    | `/api/healthz`        | Health check           |
-| POST   | `/api/validate_chirp` | Validate chirp content |
-| GET    | `/admin/metrics`      | Get request metrics    |
-| POST   | `/admin/reset`        | Reset metrics          |
-| GET    | `/app/*`              | Static file server     |
-
-Additional user and chirp endpoints are registered via `RegisterRoutes` methods in their respective handlers.
+| Method | Endpoint              | Description                   |
+| ------ | --------------------- | ----------------------------- |
+| GET    | `/api/healthz`        | Health check                  |
+| POST   | `/api/validate_chirp` | Validate chirp content        |
+| GET    | `/admin/metrics`      | Get request metrics           |
+| POST   | `/admin/reset`        | Reset metrics and data        |
+| GET    | `/app/*`              | Static file server            |
+| POST   | `/api/users`          | Register a new user           |
+| PUT    | `/api/users`          | Update current user (auth)    |
+| POST   | `/api/login`          | Log in, returns JWT + refresh |
+| POST   | `/api/refresh`        | Refresh access token          |
+| POST   | `/api/revoke`         | Revoke a refresh token        |
+| POST   | `/api/chirps`         | Create a chirp (auth)         |
+| GET    | `/api/chirps`         | List all chirps               |
+| GET    | `/api/chirps/{id}`    | Get a chirp by ID             |
+| DELETE | `/api/chirps/{id}`    | Delete a chirp (auth)         |
+| POST   | `/api/polka/webhooks` | Polka webhook (auth)          |
 
 ## Prerequisites
 
 - Go 1.22+
 - PostgreSQL
 - [sqlc](https://sqlc.dev/) (for regenerating database code)
+- [goose](https://github.com/pressly/goose) (for database migrations)
 
 ## Setup
 
@@ -76,9 +102,7 @@ Additional user and chirp endpoints are registered via `RegisterRoutes` methods 
 3. **Run database migrations:**
 
    ```bash
-   # Apply schema from sql/schema/ directory
-   psql $DB_URL -f sql/schema/001_create_users.up.sql
-   psql $DB_URL -f sql/schema/002_create_chirps.up.sql
+   ./goose.sh up
    ```
 
 4. **Start the server:**

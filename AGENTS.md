@@ -6,10 +6,19 @@ Go HTTP server built with the standard library (`net/http`, Go 1.25+) as part of
 
 - `main.go` — server entry point and route registration
 - `internal/handler/` — HTTP handlers and middleware; handlers share state via the `apiConfig` type in `api_config.go`
-- `internal/auth/` — password hashing (argon2id), JWT, refresh tokens
+  - `user.go` — user registration and update endpoints
+  - `login.go` — login, refresh token, and revoke endpoints
+  - `chirp.go` — chirp CRUD endpoints
+  - `polka.go` — webhook handler for Polka events
+  - `middleware.go` — JWT authentication middleware
+  - `healthz.go` — health check endpoint
+  - `respond.go` — response helpers (`returnWithJSON`, `returnWithError`)
+  - `validate_chirp.go` — chirp content validation
+- `internal/auth/` — authentication primitives: password hashing (argon2id), JWT access tokens, opaque refresh tokens
 - `internal/database/` — **generated sqlc code; never hand-edit**. Change `sql/queries/*.sql` instead, then run `sqlc generate`
 - `sql/schema/` — goose migrations; apply with `./goose.sh up` (requires `.env` with `DB_URL`)
 - `requests/*.http` — REST Client request examples, organized one file per endpoint group
+- `goose.sh` — wrapper script to run goose migrations with environment variables
 
 ## Build and Test
 
