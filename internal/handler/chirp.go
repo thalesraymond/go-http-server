@@ -17,7 +17,8 @@ type ChirpHandler struct {
 
 type chirpStore interface {
 	CreateChirp(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error)
-	GetAllChirps(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error)
+	GetAllChirpsAsc(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error)
+	GetAllChirpsDesc(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error)
 	GetChirpByID(ctx context.Context, id uuid.UUID) (database.Chirp, error)
 	DeleteChirpByID(ctx context.Context, id uuid.UUID) error
 }
@@ -98,6 +99,7 @@ func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request, userI
 
 func (h *ChirpHandler) GetChirps(w http.ResponseWriter, r *http.Request) {
 	authorId := r.URL.Query().Get("author_id")
+	sort := r.URL.Query().Get("sort")
 	var authorUUID uuid.UUID
 	if authorId != "" {
 		var err error
@@ -109,7 +111,18 @@ func (h *ChirpHandler) GetChirps(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	chirps, err := h.store.GetAllChirps(r.Context(), uuid.NullUUID{UUID: authorUUID, Valid: authorId != ""})
+	if sort != "" && sort != "asc" && sort != "desc" {
+		writeError(w, http.StatusBadRequest, "Invalid sort parameter. Must be 'asc' or 'desc'")
+		return
+	}
+
+	var chirps []database.Chirp
+	var err error
+	if sort == "desc" {
+		chirps, err = h.store.GetAllChirpsDesc(r.Context(), uuid.NullUUID{UUID: authorUUID, Valid: authorId != ""})
+	} else {
+		chirps, err = h.store.GetAllChirpsAsc(r.Context(), uuid.NullUUID{UUID: authorUUID, Valid: authorId != ""})
+	}
 
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to get chirps", err)
