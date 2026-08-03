@@ -27,6 +27,10 @@ func (n *noopQuerier) DeleteAllUsers(_ context.Context) error {
 	return nil
 }
 
+func (n *noopQuerier) UpdateChirpyRedFlag(_ context.Context, _ database.UpdateChirpyRedFlagParams) (database.User, error) {
+	return database.User{}, nil
+}
+
 func (n *noopQuerier) DeleteChirpByID(_ context.Context, _ uuid.UUID) error {
 	return nil
 }

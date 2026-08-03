@@ -65,6 +65,9 @@ func main() {
 	chiprHandler := handler.NewChirpHandler(apiConfig)
 	chiprHandler.RegisterRoutes(serverMux)
 
+	polkaHandler := handler.NewPolkaHandler(apiConfig)
+	polkaHandler.RegisterRoutes(serverMux)
+
 	apiConfig.Logger.Info("Starting server on :8080")
 
 	err = server.ListenAndServe()
