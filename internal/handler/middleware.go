@@ -1,28 +1,18 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/thalesraymond/go-http-server/internal/auth"
 )
 
-type contextKey string
+// AuthedHandler receives a validated userID as a parameter. The 401 flow
+// (bearer parse, JWT validation) lives behind RequireAuth, so a handler
+// can never see a missing or forged userID.
+type AuthedHandler func(w http.ResponseWriter, r *http.Request, userID uuid.UUID)
 
-const userIDKey contextKey = "userID"
-
-func GetUserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
-	userID, ok := ctx.Value(userIDKey).(uuid.UUID)
-
-	if !ok {
-		return uuid.Nil, false
-	}
-
-	return userID, true
-}
-
-func (cfg *ApiConfig) AuthMiddleware(next http.Handler) http.Handler {
+func (cfg *ApiConfig) RequireAuth(next AuthedHandler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := auth.GetBearerToken(r.Header)
 		if err != nil {
@@ -38,7 +28,6 @@ func (cfg *ApiConfig) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), userIDKey, userID)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next(w, r, userID)
 	})
 }

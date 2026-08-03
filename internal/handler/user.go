@@ -28,7 +28,7 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/users", h.CreateUser)
 	mux.HandleFunc("GET /api/users", h.GetUsers)
 	mux.HandleFunc("GET /api/users/{id}", h.GetUserByID)
-	mux.Handle("PUT /api/users", h.apiConfig.AuthMiddleware(http.HandlerFunc(h.UpdateUserByID)))
+	mux.Handle("PUT /api/users", h.apiConfig.RequireAuth(h.UpdateUserByID))
 	mux.HandleFunc("DELETE /api/users", h.DeleteUserByID)
 }
 
@@ -91,13 +91,7 @@ type UpdateUserRequest struct {
 	Password string `json:"password"`
 }
 
-func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
+func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 	var updateUserRequestData UpdateUserRequest
 	if err := decodeJSON(w, r, &updateUserRequestData); err != nil {
 		h.apiConfig.Logger.Error("Invalid request payload", err)

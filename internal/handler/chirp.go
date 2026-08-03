@@ -27,11 +27,11 @@ func NewChirpHandler(apiConfig *ApiConfig) *ChirpHandler {
 }
 
 func (h *ChirpHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.Handle("POST /api/chirps", h.apiConfig.AuthMiddleware(http.HandlerFunc(h.CreateChirp)))
+	mux.Handle("POST /api/chirps", h.apiConfig.RequireAuth(h.CreateChirp))
 	mux.HandleFunc("GET /api/chirps", h.GetChirps)
 	mux.HandleFunc("GET /api/chirps/{id}", h.GetChirpByID)
 	mux.HandleFunc("PUT /api/chirps", h.UpdateChirpByID)
-	mux.Handle("DELETE /api/chirps/{id}", h.apiConfig.AuthMiddleware(http.HandlerFunc(h.DeleteChirpByID)))
+	mux.Handle("DELETE /api/chirps/{id}", h.apiConfig.RequireAuth(h.DeleteChirpByID))
 }
 
 type CreateChirpRequest struct {
@@ -56,7 +56,7 @@ func toChirpResponse(chirp database.Chirp) ChirpResponse {
 	}
 }
 
-func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request) {
+func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 	const maxChirpLength = 140
 
 	var chirpRequestData CreateChirpRequest
@@ -78,8 +78,6 @@ func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result := containsProfanity(chirpRequestData.Body)
-
-	userID, _ := r.Context().Value(userIDKey).(uuid.UUID)
 
 	createdChirp, err := h.store.CreateChirp(r.Context(), database.CreateChirpParams{
 		ID:     uuid.New(),
@@ -143,7 +141,7 @@ func (h *ChirpHandler) GetChirpByID(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toChirpResponse(chirp))
 }
 
-func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request) {
+func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 	chirpID := r.PathValue("id")
 	if chirpID == "" {
 		writeError(w, http.StatusBadRequest, "Missing chirp ID")
@@ -169,7 +167,6 @@ func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := r.Context().Value(userIDKey).(uuid.UUID)
 	if existingChirp.UserID != userID {
 		writeError(w, http.StatusForbidden, "You are not authorized to delete this chirp")
 		return

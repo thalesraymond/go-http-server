@@ -193,12 +193,6 @@ func TestHandlerUpdateUserByID(t *testing.T) {
 			wantEmail:  "updated@example.com",
 		},
 		{
-			name:       "missing user id in context",
-			body:       `{"email":"updated@example.com","password":"newsecret123"}`,
-			userID:     uuid.Nil,
-			wantStatus: http.StatusUnauthorized,
-		},
-		{
 			name:       "invalid json",
 			body:       `{bad json`,
 			userID:     userID,
@@ -253,13 +247,9 @@ func TestHandlerUpdateUserByID(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodPut, "/api/users", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
-			if tt.userID != uuid.Nil {
-				ctx := context.WithValue(req.Context(), userIDKey, tt.userID)
-				req = req.WithContext(ctx)
-			}
 			rr := httptest.NewRecorder()
 
-			h.UpdateUserByID(rr, req)
+			h.UpdateUserByID(rr, req, tt.userID)
 
 			if rr.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
