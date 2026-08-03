@@ -17,8 +17,10 @@ import (
 
 // --- helpers ---
 
+const testPolkaKey = "test-polka-key"
+
 func newTestApiConfig() *ApiConfig {
-	return &ApiConfig{Database: &noopQuerier{}, Logger: &MockLogger{}, Secret: "test-secret"}
+	return &ApiConfig{Database: &noopQuerier{}, Logger: &MockLogger{}, Secret: "test-secret", PolkaKey: testPolkaKey}
 }
 
 // --- User Tests ---

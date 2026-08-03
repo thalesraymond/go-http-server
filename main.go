@@ -45,8 +45,8 @@ func main() {
 	}()
 
 	secret := os.Getenv("SECRET_KEY")
-
-	apiConfig := handler.NewApiConfig(database.New(db), secret)
+	polkaKey := os.Getenv("POLKA_KEY")
+	apiConfig := handler.NewApiConfig(database.New(db), secret, polkaKey)
 
 	serverMux.Handle("/app/", apiConfig.MiddlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./")))))
 

@@ -20,6 +20,7 @@ func TestPolkaWebhook(t *testing.T) {
 	tests := []struct {
 		name            string
 		body            string
+		apiKey          string
 		updateFn        func(ctx context.Context, arg database.UpdateChirpyRedFlagParams) (database.User, error)
 		wantStatus      int
 		wantStoreCalled bool
@@ -33,6 +34,13 @@ func TestPolkaWebhook(t *testing.T) {
 			wantStoreCalled: true,
 			wantUserID:      validUserID,
 			wantChirpyRed:   true,
+		},
+		{
+			name:            "wrong api key is rejected",
+			body:            `{"event":"user.upgraded","data":{"user_id":"` + validUserID.String() + `"}}`,
+			apiKey:          "wrong-key",
+			wantStatus:      http.StatusUnauthorized,
+			wantStoreCalled: false,
 		},
 		{
 			name:            "non-upgrade event is ignored",
@@ -89,13 +97,17 @@ func TestPolkaWebhook(t *testing.T) {
 				return database.User{}, nil
 			}
 
-			h := newTestPolkaHandler(store)
+			apiKey := tt.apiKey
+			if apiKey == "" {
+				apiKey = testPolkaKey
+			}
 
 			req := httptest.NewRequest(http.MethodPost, "/api/polka/webhooks", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "ApiKey "+apiKey)
 			rr := httptest.NewRecorder()
 
-			h.PolkaWebhook(rr, req)
+			newTestPolkaRoute(store).ServeHTTP(rr, req)
 
 			if rr.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())
@@ -117,15 +129,14 @@ func TestPolkaWebhookNoContent(t *testing.T) {
 	// The webhook always answers 204 No Content on success, with an empty body.
 	validUserID := uuid.New()
 
-	h := newTestPolkaHandler(nil)
-
 	req := httptest.NewRequest(http.MethodPost, "/api/polka/webhooks", bytes.NewBufferString(
 		`{"event":"user.upgraded","data":{"user_id":"`+validUserID.String()+`"}}`,
 	))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "ApiKey "+testPolkaKey)
 	rr := httptest.NewRecorder()
 
-	h.PolkaWebhook(rr, req)
+	newTestPolkaRoute(nil).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusNoContent {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusNoContent)
@@ -182,13 +193,12 @@ func TestPolkaWebhookErrorResponse(t *testing.T) {
 				store.updateChirpyRedFlagFn = tt.updateFn
 			}
 
-			h := newTestPolkaHandler(store)
-
 			req := httptest.NewRequest(http.MethodPost, "/api/polka/webhooks", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "ApiKey "+testPolkaKey)
 			rr := httptest.NewRecorder()
 
-			h.PolkaWebhook(rr, req)
+			newTestPolkaRoute(store).ServeHTTP(rr, req)
 
 			if rr.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d; body: %s", rr.Code, tt.wantStatus, rr.Body.String())

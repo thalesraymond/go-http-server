@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -22,17 +23,20 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
-	authHeader := headers.Get("Authorization")
-	if authHeader == "" {
+	return getToken(headers, "Bearer ")
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+	return getToken(headers, "ApiKey ")
+}
+
+func getToken(headers http.Header, prefix string) (string, error) {
+	token, found := strings.CutPrefix(headers.Get("Authorization"), prefix)
+	if !found || token == "" {
 		return "", http.ErrNoCookie
 	}
 
-	const prefix = "Bearer "
-	if len(authHeader) <= len(prefix) || authHeader[:len(prefix)] != prefix {
-		return "", http.ErrNoCookie
-	}
-
-	return authHeader[len(prefix):], nil
+	return token, nil
 }
 
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {

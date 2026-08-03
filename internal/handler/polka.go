@@ -23,7 +23,7 @@ func NewPolkaHandler(apiConfig *ApiConfig) *PolkaHandler {
 }
 
 func (h *PolkaHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/polka/webhooks", h.PolkaWebhook)
+	mux.Handle("/api/polka/webhooks", h.apiConfig.RequirePolkaAuth(http.HandlerFunc(h.PolkaWebhook)))
 }
 
 func (h *PolkaHandler) PolkaWebhook(w http.ResponseWriter, r *http.Request) {

@@ -31,3 +31,15 @@ func (cfg *ApiConfig) RequireAuth(next AuthedHandler) http.Handler {
 		next(w, r, userID)
 	})
 }
+
+func (cfg *ApiConfig) RequirePolkaAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiKey, err := auth.GetAPIKey(r.Header)
+		if err != nil || apiKey != cfg.PolkaKey {
+			cfg.Logger.Error("Missing or invalid Polka API key", err)
+			writeError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}

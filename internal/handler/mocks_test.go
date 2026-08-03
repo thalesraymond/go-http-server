@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/thalesraymond/go-http-server/internal/database"
@@ -190,6 +191,13 @@ func newTestPolkaHandler(store *mockPolkaStore) *PolkaHandler {
 		h.store = store
 	}
 	return h
+}
+
+// newTestPolkaRoute wraps the webhook handler in RequirePolkaAuth, mirroring
+// the real route registration in RegisterRoutes.
+func newTestPolkaRoute(store *mockPolkaStore) http.Handler {
+	h := newTestPolkaHandler(store)
+	return h.apiConfig.RequirePolkaAuth(http.HandlerFunc(h.PolkaWebhook))
 }
 
 // MockLogger implements Logger interface for testing
