@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -65,15 +67,22 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.store.GetUserByEmail(r.Context(), request.Email)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Unknown email: respond identically to a wrong password so the
+			// API never reveals which emails are registered.
+			writeError(w, http.StatusUnauthorized, "Incorrect email or password")
+			return
+		}
+
 		h.apiConfig.Logger.Error("Failed to get user by email", err)
-		writeError(w, http.StatusInternalServerError, "Incorrect email or password")
+		writeError(w, http.StatusInternalServerError, "Failed to get user by email")
 		return
 	}
 
 	match, err := auth.CheckPasswordHash(request.Password, user.HashedPassword)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to check password hash", err)
-		writeError(w, http.StatusInternalServerError, "Incorrect email or password")
+		writeError(w, http.StatusInternalServerError, "Failed to check password hash")
 		return
 	}
 

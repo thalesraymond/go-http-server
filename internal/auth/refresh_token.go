@@ -5,7 +5,8 @@ import (
 	"encoding/hex"
 )
 
-func MakeRefreshToken() string {
+// MakeRefreshToken is a variable so handlers can override it in tests.
+var MakeRefreshToken = func() string {
 	b := make([]byte, 32)
 	rand.Read(b)
 	return hex.EncodeToString(b)

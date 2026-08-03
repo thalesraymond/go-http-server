@@ -31,7 +31,6 @@ func (h *ChirpHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/chirps", h.apiConfig.RequireAuth(h.CreateChirp))
 	mux.HandleFunc("GET /api/chirps", h.GetChirps)
 	mux.HandleFunc("GET /api/chirps/{id}", h.GetChirpByID)
-	mux.HandleFunc("PUT /api/chirps", h.UpdateChirpByID)
 	mux.Handle("DELETE /api/chirps/{id}", h.apiConfig.RequireAuth(h.DeleteChirpByID))
 }
 
@@ -140,10 +139,6 @@ func (h *ChirpHandler) GetChirps(w http.ResponseWriter, r *http.Request) {
 
 func (h *ChirpHandler) GetChirpByID(w http.ResponseWriter, r *http.Request) {
 	chirpID := r.PathValue("id")
-	if chirpID == "" {
-		writeError(w, http.StatusBadRequest, "Missing chirp ID")
-		return
-	}
 
 	chirpUUID, err := uuid.Parse(chirpID)
 	if err != nil {
@@ -169,10 +164,6 @@ func (h *ChirpHandler) GetChirpByID(w http.ResponseWriter, r *http.Request) {
 
 func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 	chirpID := r.PathValue("id")
-	if chirpID == "" {
-		writeError(w, http.StatusBadRequest, "Missing chirp ID")
-		return
-	}
 
 	chirpUUID, err := uuid.Parse(chirpID)
 	if err != nil {
@@ -206,8 +197,4 @@ func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request, u
 	}
 
 	writeNoContent(w)
-}
-
-func (h *ChirpHandler) UpdateChirpByID(w http.ResponseWriter, r *http.Request) {
-	// Implement the logic to update a chirp by ID
 }

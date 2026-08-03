@@ -26,10 +26,7 @@ func NewUserHandler(apiConfig *ApiConfig) *UserHandler {
 
 func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/users", h.CreateUser)
-	mux.HandleFunc("GET /api/users", h.GetUsers)
-	mux.HandleFunc("GET /api/users/{id}", h.GetUserByID)
 	mux.Handle("PUT /api/users", h.apiConfig.RequireAuth(h.UpdateUserByID))
-	mux.HandleFunc("DELETE /api/users", h.DeleteUserByID)
 }
 
 type CreateUserRequest struct {
@@ -126,16 +123,4 @@ func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request, use
 	}
 
 	writeJSON(w, http.StatusOK, toUserResponse(updatedUser))
-}
-
-func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
-	// Implement the logic to get all users
-}
-
-func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
-	// Implement the logic to get a user by ID
-}
-
-func (h *UserHandler) DeleteUserByID(w http.ResponseWriter, r *http.Request) {
-	// Implement the logic to delete a user by ID
 }

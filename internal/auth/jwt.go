@@ -9,7 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
+// MakeJWT is a variable so handlers can override it in tests.
+var MakeJWT = func(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
 	now := time.Now().UTC()
 	claims := jwt.RegisteredClaims{
 		Issuer:    "chirpy-access",
