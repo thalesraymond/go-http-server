@@ -36,7 +36,7 @@ func (n *noopQuerier) DeleteChirpByID(_ context.Context, _ uuid.UUID) error {
 	return nil
 }
 
-func (n *noopQuerier) GetAllChirps(_ context.Context, userID uuid.UUID) ([]database.Chirp, error) {
+func (n *noopQuerier) GetAllChirps(_ context.Context, _ uuid.NullUUID) ([]database.Chirp, error) {
 	return []database.Chirp{}, nil
 }
 
