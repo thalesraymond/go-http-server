@@ -12,7 +12,14 @@ RETURNING
     *;
 
 -- name: GetAllChirps :many
-SELECT * FROM chirps ORDER BY created_at ASC;
+SELECT *
+FROM chirps
+WHERE
+    COALESCE(
+        sqlc.narg ('author_id')::uuid,
+        user_id
+    ) = user_id
+ORDER BY created_at ASC;
 
 -- name: GetChirpByID :one
 SELECT * FROM chirps WHERE id = $1;

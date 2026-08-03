@@ -117,20 +117,19 @@ func TestHandlerCreateChirp(t *testing.T) {
 
 func TestHandlerGetChirps(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
-	userID := uuid.New()
 
 	tests := []struct {
 		name       string
-		mockFn     func(ctx context.Context) ([]database.Chirp, error)
+		mockFn     func(ctx context.Context, userID uuid.NullUUID) ([]database.Chirp, error)
 		wantStatus int
 		wantCount  int
 	}{
 		{
 			name: "returns chirps",
-			mockFn: func(_ context.Context) ([]database.Chirp, error) {
+			mockFn: func(_ context.Context, userID uuid.NullUUID) ([]database.Chirp, error) {
 				return []database.Chirp{
-					{ID: uuid.New(), Body: "first", UserID: userID, CreatedAt: now, UpdatedAt: now},
-					{ID: uuid.New(), Body: "second", UserID: userID, CreatedAt: now, UpdatedAt: now},
+					{ID: uuid.New(), Body: "first", UserID: userID.UUID, CreatedAt: now, UpdatedAt: now},
+					{ID: uuid.New(), Body: "second", UserID: userID.UUID, CreatedAt: now, UpdatedAt: now},
 				}, nil
 			},
 			wantStatus: http.StatusOK,
@@ -138,7 +137,7 @@ func TestHandlerGetChirps(t *testing.T) {
 		},
 		{
 			name: "empty list",
-			mockFn: func(_ context.Context) ([]database.Chirp, error) {
+			mockFn: func(_ context.Context, userID uuid.NullUUID) ([]database.Chirp, error) {
 				return nil, nil
 			},
 			wantStatus: http.StatusOK,
@@ -146,7 +145,7 @@ func TestHandlerGetChirps(t *testing.T) {
 		},
 		{
 			name: "database error",
-			mockFn: func(_ context.Context) ([]database.Chirp, error) {
+			mockFn: func(_ context.Context, userID uuid.NullUUID) ([]database.Chirp, error) {
 				return nil, errors.New("db error")
 			},
 			wantStatus: http.StatusInternalServerError,

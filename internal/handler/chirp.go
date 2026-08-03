@@ -17,7 +17,7 @@ type ChirpHandler struct {
 
 type chirpStore interface {
 	CreateChirp(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error)
-	GetAllChirps(ctx context.Context) ([]database.Chirp, error)
+	GetAllChirps(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error)
 	GetChirpByID(ctx context.Context, id uuid.UUID) (database.Chirp, error)
 	DeleteChirpByID(ctx context.Context, id uuid.UUID) error
 }
@@ -97,7 +97,20 @@ func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request, userI
 }
 
 func (h *ChirpHandler) GetChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := h.store.GetAllChirps(r.Context())
+	authorId := r.URL.Query().Get("author_id")
+	var authorUUID uuid.UUID
+	if authorId != "" {
+		var err error
+		authorUUID, err = uuid.Parse(authorId)
+		if err != nil {
+			h.apiConfig.Logger.Error("Invalid author ID", err)
+			writeError(w, http.StatusBadRequest, "Invalid author ID")
+			return
+		}
+	}
+
+	chirps, err := h.store.GetAllChirps(r.Context(), uuid.NullUUID{UUID: authorUUID, Valid: authorId != ""})
+
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to get chirps", err)
 		writeError(w, http.StatusInternalServerError, "Failed to get chirps")

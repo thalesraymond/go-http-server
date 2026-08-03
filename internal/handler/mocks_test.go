@@ -36,7 +36,7 @@ func (n *noopQuerier) DeleteChirpByID(_ context.Context, _ uuid.UUID) error {
 	return nil
 }
 
-func (n *noopQuerier) GetAllChirps(_ context.Context) ([]database.Chirp, error) {
+func (n *noopQuerier) GetAllChirps(_ context.Context, userID uuid.UUID) ([]database.Chirp, error) {
 	return []database.Chirp{}, nil
 }
 
@@ -116,7 +116,7 @@ func (m *mockLoginStore) RevokeRefreshToken(ctx context.Context, token string) e
 
 type mockChirpStore struct {
 	createChirpFn     func(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error)
-	getAllChirpsFn    func(ctx context.Context) ([]database.Chirp, error)
+	getAllChirpsFn    func(ctx context.Context, userID uuid.NullUUID) ([]database.Chirp, error)
 	getChirpByIDFn    func(ctx context.Context, id uuid.UUID) (database.Chirp, error)
 	deleteChirpByIDFn func(ctx context.Context, id uuid.UUID) error
 }
@@ -128,9 +128,9 @@ func (m *mockChirpStore) CreateChirp(ctx context.Context, arg database.CreateChi
 	return database.Chirp{}, nil
 }
 
-func (m *mockChirpStore) GetAllChirps(ctx context.Context) ([]database.Chirp, error) {
+func (m *mockChirpStore) GetAllChirps(ctx context.Context, userID uuid.NullUUID) ([]database.Chirp, error) {
 	if m.getAllChirpsFn != nil {
-		return m.getAllChirpsFn(ctx)
+		return m.getAllChirpsFn(ctx, userID)
 	}
 	return []database.Chirp{}, nil
 }

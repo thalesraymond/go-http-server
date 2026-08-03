@@ -16,7 +16,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAllUsers(ctx context.Context) error
 	DeleteChirpByID(ctx context.Context, id uuid.UUID) error
-	GetAllChirps(ctx context.Context) ([]Chirp, error)
+	GetAllChirps(ctx context.Context, authorID uuid.NullUUID) ([]Chirp, error)
 	GetChirpByID(ctx context.Context, id uuid.UUID) (Chirp, error)
 	GetRefreshTokenByID(ctx context.Context, token string) (RefreshToken, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)

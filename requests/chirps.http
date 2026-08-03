@@ -1,9 +1,10 @@
 ### Create Chirp
 # Creates a new chirp and returns the created chirp
-POST http://localhost:8080/api/chirps HTTP/1.1
+POST http://localhost>:8080/api/chirps HTTP/1.1
 Content-Type: application/json
-Authorization: Bearer <ACCESS_TOKEN>
-{"body": "Hello, world!"}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHktYWNjZXNzIiwic3ViIjoiZTcxNTc0YzYtZTdiMC00MTE2LWIxYWEtNGRjN2E5NGQ2YzZiIiwiZXhwIjoxNzg1ODAxMzY4LCJpYXQiOjE3ODU3OTc3Njh9.RAy8AJh2Q_0vcNsrOXWkqLkITOQG-k2fdCofPcitmsQ
+
+{"body": "Hello, world 2!"}
 
 ### Create Chirp (invalid payload)
 # Returns 400 Bad Request when the JSON payload is malformed
@@ -15,6 +16,10 @@ Content-Type: application/json
 ### Get All Chirps
 # Returns a list of all chirps
 GET http://localhost:8080/api/chirps HTTP/1.1
+
+### Get Chirps by Author
+# Returns all chirps created by a specific author (replace <AUTHOR_ID> with a user's UUID)
+GET http://localhost:8080/api/chirps?author_id=e71574c6-e7b0-4116-b1aa-4dc7a94d6c6b HTTP/1.1   
 
 ### Get Chirp by ID
 # Returns a chirp by its ID
