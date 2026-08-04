@@ -10,6 +10,7 @@ import (
 	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 	"github.com/thalesraymond/go-http-server/internal/handler"
+	"github.com/thalesraymond/go-http-server/internal/session"
 
 	_ "github.com/lib/pq"
 )
@@ -64,8 +65,8 @@ func main() {
 	userHandler := handler.NewUserHandler(dbQuerier, logger, authenticator, handshake)
 	userHandler.RegisterRoutes(serverMux)
 
-	loginHandler := handler.NewLoginHandler(dbQuerier, logger, authenticator)
-	loginHandler.RegisterRoutes(serverMux)
+	sessionHandler := handler.NewSessionHandler(dbQuerier, logger, authenticator, session.New(dbQuerier, authenticator))
+	sessionHandler.RegisterRoutes(serverMux)
 
 	chiprHandler := handler.NewChirpHandler(dbQuerier, logger, handshake)
 	chiprHandler.RegisterRoutes(serverMux)

@@ -11,11 +11,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/thalesraymond/go-http-server/internal/database"
+	"github.com/thalesraymond/go-http-server/internal/session"
 )
 
-// newTestLoginHandler wires a LoginHandler around a mock store and mock authenticator.
-func newTestLoginHandler(mock loginStore, authMock *mockAuthenticator) *LoginHandler {
-	return NewLoginHandler(mock, testLogger{}, authMock)
+// newTestSessionHandler wires a SessionHandler around the mock store, mock
+// authenticator, and a real session.Session built from them.
+func newTestSessionHandler(mock *mockQuerier, authMock *mockAuthenticator) *SessionHandler {
+	return NewSessionHandler(mock, testLogger{}, authMock, session.New(mock, authMock))
 }
 
 func TestLogin(t *testing.T) {
@@ -114,7 +116,7 @@ func TestLogin(t *testing.T) {
 			wantError:  "Failed to check password hash",
 		},
 		{
-			name: "handles JWT creation error",
+			name: "handles session start error",
 			body: `{"email": "ada@example.com", "password": "hunter2"}`,
 			setupMock: func(m *mockQuerier) {
 				m.getUserByEmailFn = func(ctx context.Context, email string) (database.User, error) {
@@ -126,7 +128,7 @@ func TestLogin(t *testing.T) {
 			},
 			makeJWTErr: true,
 			wantStatus: http.StatusInternalServerError,
-			wantError:  "Failed to generate token",
+			wantError:  "Internal Server Error",
 		},
 		{
 			name: "handles refresh token creation error",
@@ -140,7 +142,7 @@ func TestLogin(t *testing.T) {
 				}
 			},
 			wantStatus: http.StatusInternalServerError,
-			wantError:  "Failed to create refresh token",
+			wantError:  "Internal Server Error",
 		},
 	}
 
@@ -161,7 +163,7 @@ func TestLogin(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			h := newTestLoginHandler(mock, authMock)
+			h := newTestSessionHandler(mock, authMock)
 			rr := httptest.NewRecorder()
 			req := newTestRequest(t, http.MethodPost, "/api/login", tt.body)
 
@@ -235,7 +237,7 @@ func TestGetRefreshToken(t *testing.T) {
 			name:       "rejects missing authorization header",
 			authHeader: "",
 			wantStatus: http.StatusUnauthorized,
-			wantError:  "Invalid Authorization header",
+			wantError:  "Unauthorized",
 		},
 		{
 			name:       "rejects unknown refresh token",
@@ -246,7 +248,7 @@ func TestGetRefreshToken(t *testing.T) {
 				}
 			},
 			wantStatus: http.StatusUnauthorized,
-			wantError:  "Invalid refresh token",
+			wantError:  "Unauthorized",
 		},
 		{
 			name:       "rejects revoked refresh token",
@@ -261,7 +263,7 @@ func TestGetRefreshToken(t *testing.T) {
 				}
 			},
 			wantStatus: http.StatusUnauthorized,
-			wantError:  "Refresh token revoked",
+			wantError:  "Unauthorized",
 		},
 		{
 			name:       "rejects expired refresh token",
@@ -275,7 +277,18 @@ func TestGetRefreshToken(t *testing.T) {
 				}
 			},
 			wantStatus: http.StatusUnauthorized,
-			wantError:  "Refresh token expired",
+			wantError:  "Unauthorized",
+		},
+		{
+			name:       "handles store error",
+			authHeader: "Bearer rt-valid",
+			setupMock: func(m *mockQuerier) {
+				m.getRefreshTokenByIDFn = func(ctx context.Context, token string) (database.RefreshToken, error) {
+					return database.RefreshToken{}, errors.New("database down")
+				}
+			},
+			wantStatus: http.StatusInternalServerError,
+			wantError:  "Internal Server Error",
 		},
 		{
 			name:       "handles JWT creation error",
@@ -287,7 +300,7 @@ func TestGetRefreshToken(t *testing.T) {
 				}
 			},
 			wantStatus: http.StatusInternalServerError,
-			wantError:  "Failed to generate token",
+			wantError:  "Internal Server Error",
 		},
 	}
 
@@ -305,7 +318,7 @@ func TestGetRefreshToken(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			h := newTestLoginHandler(mock, authMock)
+			h := newTestSessionHandler(mock, authMock)
 			rr := httptest.NewRecorder()
 			req := newTestRequest(t, http.MethodPost, "/api/refresh", "")
 			if tt.authHeader != "" {
@@ -357,7 +370,7 @@ func TestRevokeRefreshToken(t *testing.T) {
 			name:       "rejects missing authorization header",
 			authHeader: "",
 			wantStatus: http.StatusUnauthorized,
-			wantError:  "Invalid Authorization header",
+			wantError:  "Unauthorized",
 		},
 		{
 			name:       "handles store error",
@@ -368,7 +381,7 @@ func TestRevokeRefreshToken(t *testing.T) {
 				}
 			},
 			wantStatus: http.StatusInternalServerError,
-			wantError:  "Failed to remove refresh token",
+			wantError:  "Internal Server Error",
 		},
 	}
 
@@ -380,7 +393,7 @@ func TestRevokeRefreshToken(t *testing.T) {
 			}
 
 			authMock := newDefaultMockAuthenticator()
-			h := newTestLoginHandler(mock, authMock)
+			h := newTestSessionHandler(mock, authMock)
 			rr := httptest.NewRecorder()
 			req := newTestRequest(t, http.MethodPost, "/api/revoke", "")
 			if tt.authHeader != "" {

@@ -10,7 +10,7 @@ An account identified by email, authenticated with a password (argon2id-hashed).
 
 ## Session
 
-The thing a login produces: a short-lived access JWT plus a long-lived refresh token. Revocation ends a Session.
+The thing a login produces: a short-lived access JWT plus a long-lived refresh token. A Session begins with a login, continues through renewals, and ends with revocation. The `session.Session` module in `internal/session` owns the whole lifecycle and TTL policy behind three methods: `Start` (login), `Renew` (refresh token → new access token), `End` (revocation).
 
 ## Authed handler
 
