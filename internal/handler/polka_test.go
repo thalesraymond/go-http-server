@@ -12,24 +12,6 @@ import (
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
-// mockPolkaStore implements polkaStore with a stub function and records its
-// arguments and call count so tests can assert on them.
-type mockPolkaStore struct {
-	updateChirpyRedFlagFn func(ctx context.Context, arg database.UpdateChirpyRedFlagParams) (database.User, error)
-
-	updateChirpyRedFlagParams database.UpdateChirpyRedFlagParams
-	updateChirpyRedFlagCalls  int
-}
-
-func (m *mockPolkaStore) UpdateChirpyRedFlag(ctx context.Context, arg database.UpdateChirpyRedFlagParams) (database.User, error) {
-	m.updateChirpyRedFlagCalls++
-	m.updateChirpyRedFlagParams = arg
-	if m.updateChirpyRedFlagFn == nil {
-		return database.User{}, errUnstubbed
-	}
-	return m.updateChirpyRedFlagFn(ctx, arg)
-}
-
 // newTestPolkaHandler wires a PolkaHandler around a mock store.
 func newTestPolkaHandler(mock polkaStore) *PolkaHandler {
 	return &PolkaHandler{apiConfig: newTestApiConfig(), store: mock}
@@ -41,7 +23,7 @@ func TestPolkaWebhook(t *testing.T) {
 	tests := []struct {
 		name            string
 		body            string
-		setupMock       func(m *mockPolkaStore)
+		setupMock       func(m *mockQuerier)
 		wantStatus      int
 		wantError       string
 		wantStoreCalled bool
@@ -49,7 +31,7 @@ func TestPolkaWebhook(t *testing.T) {
 		{
 			name: "upgrades user to chirpy red",
 			body: `{"event": "user.upgraded", "data": {"user_id": "` + userID.String() + `"}}`,
-			setupMock: func(m *mockPolkaStore) {
+			setupMock: func(m *mockQuerier) {
 				m.updateChirpyRedFlagFn = func(ctx context.Context, arg database.UpdateChirpyRedFlagParams) (database.User, error) {
 					return database.User{ID: arg.ID, IsChirpyRed: arg.IsChirpyRed}, nil
 				}
@@ -78,7 +60,7 @@ func TestPolkaWebhook(t *testing.T) {
 		{
 			name: "returns 404 for unknown user",
 			body: `{"event": "user.upgraded", "data": {"user_id": "` + userID.String() + `"}}`,
-			setupMock: func(m *mockPolkaStore) {
+			setupMock: func(m *mockQuerier) {
 				m.updateChirpyRedFlagFn = func(ctx context.Context, arg database.UpdateChirpyRedFlagParams) (database.User, error) {
 					return database.User{}, sql.ErrNoRows
 				}
@@ -89,7 +71,7 @@ func TestPolkaWebhook(t *testing.T) {
 		{
 			name: "handles store error",
 			body: `{"event": "user.upgraded", "data": {"user_id": "` + userID.String() + `"}}`,
-			setupMock: func(m *mockPolkaStore) {
+			setupMock: func(m *mockQuerier) {
 				m.updateChirpyRedFlagFn = func(ctx context.Context, arg database.UpdateChirpyRedFlagParams) (database.User, error) {
 					return database.User{}, errors.New("database down")
 				}
@@ -101,7 +83,7 @@ func TestPolkaWebhook(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockPolkaStore{}
+			mock := &mockQuerier{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}

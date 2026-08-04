@@ -11,32 +11,6 @@ import (
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
-// mockUserStore implements userStore with per-method stub functions and
-// records its arguments so tests can assert on them.
-type mockUserStore struct {
-	createUserFn func(ctx context.Context, arg database.CreateUserParams) (database.User, error)
-	updateUserFn func(ctx context.Context, arg database.UpdateUserParams) (database.User, error)
-
-	createUserParams database.CreateUserParams
-	updateUserParams database.UpdateUserParams
-}
-
-func (m *mockUserStore) CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error) {
-	m.createUserParams = arg
-	if m.createUserFn == nil {
-		return database.User{}, errUnstubbed
-	}
-	return m.createUserFn(ctx, arg)
-}
-
-func (m *mockUserStore) UpdateUser(ctx context.Context, arg database.UpdateUserParams) (database.User, error) {
-	m.updateUserParams = arg
-	if m.updateUserFn == nil {
-		return database.User{}, errUnstubbed
-	}
-	return m.updateUserFn(ctx, arg)
-}
-
 // newTestUserHandler wires a UserHandler around a mock store and mock authenticator.
 func newTestUserHandler(mock userStore, authMock *mockAuthenticator) *UserHandler {
 	return &UserHandler{apiConfig: newTestApiConfigWithAuth(authMock), store: mock}
@@ -49,14 +23,14 @@ func TestCreateUser(t *testing.T) {
 		name       string
 		body       string
 		hashError  bool
-		setupMock  func(m *mockUserStore)
+		setupMock  func(m *mockQuerier)
 		wantStatus int
 		wantError  string
 	}{
 		{
 			name: "creates user",
 			body: `{"email": "ada@example.com", "password": "hunter2"}`,
-			setupMock: func(m *mockUserStore) {
+			setupMock: func(m *mockQuerier) {
 				m.createUserFn = func(ctx context.Context, arg database.CreateUserParams) (database.User, error) {
 					return database.User{
 						ID:             arg.ID,
@@ -85,7 +59,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			name: "handles store error",
 			body: `{"email": "ada@example.com", "password": "hunter2"}`,
-			setupMock: func(m *mockUserStore) {
+			setupMock: func(m *mockQuerier) {
 				m.createUserFn = func(ctx context.Context, arg database.CreateUserParams) (database.User, error) {
 					return database.User{}, errors.New("database down")
 				}
@@ -104,7 +78,7 @@ func TestCreateUser(t *testing.T) {
 				}
 			}
 
-			mock := &mockUserStore{}
+			mock := &mockQuerier{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
@@ -147,14 +121,14 @@ func TestUpdateUserByID(t *testing.T) {
 		name       string
 		body       string
 		hashError  bool
-		setupMock  func(m *mockUserStore)
+		setupMock  func(m *mockQuerier)
 		wantStatus int
 		wantError  string
 	}{
 		{
 			name: "updates user",
 			body: `{"email": "ada@example.com", "password": "newpass"}`,
-			setupMock: func(m *mockUserStore) {
+			setupMock: func(m *mockQuerier) {
 				m.updateUserFn = func(ctx context.Context, arg database.UpdateUserParams) (database.User, error) {
 					return database.User{
 						ID:             arg.ID,
@@ -193,7 +167,7 @@ func TestUpdateUserByID(t *testing.T) {
 		{
 			name: "handles store error",
 			body: `{"email": "ada@example.com", "password": "newpass"}`,
-			setupMock: func(m *mockUserStore) {
+			setupMock: func(m *mockQuerier) {
 				m.updateUserFn = func(ctx context.Context, arg database.UpdateUserParams) (database.User, error) {
 					return database.User{}, errors.New("database down")
 				}
@@ -212,7 +186,7 @@ func TestUpdateUserByID(t *testing.T) {
 				}
 			}
 
-			mock := &mockUserStore{}
+			mock := &mockQuerier{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}

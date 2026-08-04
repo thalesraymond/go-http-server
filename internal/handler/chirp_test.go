@@ -14,62 +14,6 @@ import (
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
-// mockChirpStore implements chirpStore with per-method stub functions.
-// Every method also records its arguments so tests can assert on them.
-type mockChirpStore struct {
-	createChirpFn      func(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error)
-	getAllChirpsAscFn  func(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error)
-	getAllChirpsDescFn func(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error)
-	getChirpByIDFn     func(ctx context.Context, id uuid.UUID) (database.Chirp, error)
-	deleteChirpByIDFn  func(ctx context.Context, id uuid.UUID) error
-
-	createChirpParams        database.CreateChirpParams
-	getAllChirpsAscAuthorID  uuid.NullUUID
-	getAllChirpsDescAuthorID uuid.NullUUID
-	getChirpByIDID           uuid.UUID
-	deleteChirpByIDID        uuid.UUID
-}
-
-func (m *mockChirpStore) CreateChirp(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error) {
-	m.createChirpParams = arg
-	if m.createChirpFn == nil {
-		return database.Chirp{}, errUnstubbed
-	}
-	return m.createChirpFn(ctx, arg)
-}
-
-func (m *mockChirpStore) GetAllChirpsAsc(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error) {
-	m.getAllChirpsAscAuthorID = authorID
-	if m.getAllChirpsAscFn == nil {
-		return nil, errUnstubbed
-	}
-	return m.getAllChirpsAscFn(ctx, authorID)
-}
-
-func (m *mockChirpStore) GetAllChirpsDesc(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error) {
-	m.getAllChirpsDescAuthorID = authorID
-	if m.getAllChirpsDescFn == nil {
-		return nil, errUnstubbed
-	}
-	return m.getAllChirpsDescFn(ctx, authorID)
-}
-
-func (m *mockChirpStore) GetChirpByID(ctx context.Context, id uuid.UUID) (database.Chirp, error) {
-	m.getChirpByIDID = id
-	if m.getChirpByIDFn == nil {
-		return database.Chirp{}, errUnstubbed
-	}
-	return m.getChirpByIDFn(ctx, id)
-}
-
-func (m *mockChirpStore) DeleteChirpByID(ctx context.Context, id uuid.UUID) error {
-	m.deleteChirpByIDID = id
-	if m.deleteChirpByIDFn == nil {
-		return errUnstubbed
-	}
-	return m.deleteChirpByIDFn(ctx, id)
-}
-
 // newTestChirpHandler wires a ChirpHandler around a mock store.
 func newTestChirpHandler(mock chirpStore) (*ApiConfig, *ChirpHandler) {
 	cfg := newTestApiConfig()
@@ -91,7 +35,7 @@ func TestCreateChirp(t *testing.T) {
 	tests := []struct {
 		name       string
 		body       string
-		setupMock  func(m *mockChirpStore)
+		setupMock  func(m *mockQuerier)
 		wantStatus int
 		wantError  string
 		wantBody   string
@@ -99,7 +43,7 @@ func TestCreateChirp(t *testing.T) {
 		{
 			name: "creates chirp",
 			body: `{"body": "Hello world"}`,
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.createChirpFn = func(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error) {
 					return database.Chirp{
 						ID:        arg.ID,
@@ -116,7 +60,7 @@ func TestCreateChirp(t *testing.T) {
 		{
 			name: "cleans profanity before storing",
 			body: `{"body": "I heard kerfuffle is bad"}`,
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.createChirpFn = func(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error) {
 					return database.Chirp{
 						ID:        arg.ID,
@@ -151,7 +95,7 @@ func TestCreateChirp(t *testing.T) {
 		{
 			name: "handles store error",
 			body: `{"body": "Hello world"}`,
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.createChirpFn = func(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error) {
 					return database.Chirp{}, errors.New("database down")
 				}
@@ -163,7 +107,7 @@ func TestCreateChirp(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockChirpStore{}
+			mock := &mockQuerier{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
@@ -221,7 +165,7 @@ func TestGetChirps(t *testing.T) {
 	tests := []struct {
 		name               string
 		target             string
-		setupMock          func(m *mockChirpStore)
+		setupMock          func(m *mockQuerier)
 		wantStatus         int
 		wantError          string
 		wantCount          int
@@ -231,7 +175,7 @@ func TestGetChirps(t *testing.T) {
 		{
 			name:   "returns chirps ascending by default",
 			target: "/api/chirps",
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getAllChirpsAscFn = func(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error) {
 					return chirps, nil
 				}
@@ -242,7 +186,7 @@ func TestGetChirps(t *testing.T) {
 		{
 			name:   "returns chirps descending when requested",
 			target: "/api/chirps?sort=desc",
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getAllChirpsDescFn = func(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error) {
 					return chirps, nil
 				}
@@ -253,7 +197,7 @@ func TestGetChirps(t *testing.T) {
 		{
 			name:   "filters by author",
 			target: "/api/chirps?author_id=" + userA.String(),
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getAllChirpsAscFn = func(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error) {
 					return nil, nil
 				}
@@ -278,7 +222,7 @@ func TestGetChirps(t *testing.T) {
 		{
 			name:   "returns empty list when no chirps exist",
 			target: "/api/chirps",
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getAllChirpsAscFn = func(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error) {
 					return []database.Chirp{}, nil
 				}
@@ -289,7 +233,7 @@ func TestGetChirps(t *testing.T) {
 		{
 			name:   "handles store error",
 			target: "/api/chirps",
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getAllChirpsAscFn = func(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error) {
 					return nil, errors.New("database down")
 				}
@@ -301,7 +245,7 @@ func TestGetChirps(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockChirpStore{}
+			mock := &mockQuerier{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
@@ -352,7 +296,7 @@ func TestGetChirpByID(t *testing.T) {
 	tests := []struct {
 		name       string
 		target     string
-		setupMock  func(m *mockChirpStore)
+		setupMock  func(m *mockQuerier)
 		wantStatus int
 		wantError  string
 		wantChirp  bool
@@ -360,7 +304,7 @@ func TestGetChirpByID(t *testing.T) {
 		{
 			name:   "returns chirp",
 			target: "/api/chirps/" + chirpID.String(),
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getChirpByIDFn = func(ctx context.Context, id uuid.UUID) (database.Chirp, error) {
 					return chirp, nil
 				}
@@ -377,7 +321,7 @@ func TestGetChirpByID(t *testing.T) {
 		{
 			name:   "returns 404 when chirp not found",
 			target: "/api/chirps/" + chirpID.String(),
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getChirpByIDFn = func(ctx context.Context, id uuid.UUID) (database.Chirp, error) {
 					return database.Chirp{}, sql.ErrNoRows
 				}
@@ -388,7 +332,7 @@ func TestGetChirpByID(t *testing.T) {
 		{
 			name:   "handles store error",
 			target: "/api/chirps/" + chirpID.String(),
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getChirpByIDFn = func(ctx context.Context, id uuid.UUID) (database.Chirp, error) {
 					return database.Chirp{}, errors.New("database down")
 				}
@@ -400,7 +344,7 @@ func TestGetChirpByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockChirpStore{}
+			mock := &mockQuerier{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
@@ -445,7 +389,7 @@ func TestDeleteChirpByID(t *testing.T) {
 		target     string
 		withAuth   bool
 		authAs     uuid.UUID
-		setupMock  func(m *mockChirpStore)
+		setupMock  func(m *mockQuerier)
 		wantStatus int
 		wantError  string
 	}{
@@ -454,7 +398,7 @@ func TestDeleteChirpByID(t *testing.T) {
 			target:   "/api/chirps/" + chirpID.String(),
 			withAuth: true,
 			authAs:   chirpOwner,
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getChirpByIDFn = func(ctx context.Context, id uuid.UUID) (database.Chirp, error) {
 					return chirp, nil
 				}
@@ -484,7 +428,7 @@ func TestDeleteChirpByID(t *testing.T) {
 			target:   "/api/chirps/" + chirpID.String(),
 			withAuth: true,
 			authAs:   testUserID,
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getChirpByIDFn = func(ctx context.Context, id uuid.UUID) (database.Chirp, error) {
 					return database.Chirp{}, sql.ErrNoRows
 				}
@@ -497,7 +441,7 @@ func TestDeleteChirpByID(t *testing.T) {
 			target:   "/api/chirps/" + chirpID.String(),
 			withAuth: true,
 			authAs:   testUserID,
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getChirpByIDFn = func(ctx context.Context, id uuid.UUID) (database.Chirp, error) {
 					return chirp, nil
 				}
@@ -510,7 +454,7 @@ func TestDeleteChirpByID(t *testing.T) {
 			target:   "/api/chirps/" + chirpID.String(),
 			withAuth: true,
 			authAs:   testUserID,
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getChirpByIDFn = func(ctx context.Context, id uuid.UUID) (database.Chirp, error) {
 					return database.Chirp{}, errors.New("database down")
 				}
@@ -523,7 +467,7 @@ func TestDeleteChirpByID(t *testing.T) {
 			target:   "/api/chirps/" + chirpID.String(),
 			withAuth: true,
 			authAs:   chirpOwner,
-			setupMock: func(m *mockChirpStore) {
+			setupMock: func(m *mockQuerier) {
 				m.getChirpByIDFn = func(ctx context.Context, id uuid.UUID) (database.Chirp, error) {
 					return chirp, nil
 				}
@@ -538,7 +482,7 @@ func TestDeleteChirpByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mock := &mockChirpStore{}
+			mock := &mockQuerier{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
