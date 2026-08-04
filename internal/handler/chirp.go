@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -58,8 +59,6 @@ func toChirpResponse(chirp database.Chirp) ChirpResponse {
 }
 
 func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
-	const maxChirpLength = 140
-
 	var chirpRequestData CreateChirpRequest
 
 	if err := decodeJSON(w, r, &chirpRequestData); err != nil {
@@ -68,21 +67,21 @@ func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request, userI
 		return
 	}
 
-	if len(chirpRequestData.Body) == 0 {
-		writeError(w, http.StatusBadRequest, "Chirp body cannot be empty")
+	cleanedBody, err := ValidateChirp(chirpRequestData.Body)
+	if err != nil {
+		msg := "Invalid chirp body"
+		if errors.Is(err, ErrChirpEmpty) {
+			msg = "Chirp body cannot be empty"
+		} else if errors.Is(err, ErrChirpTooLong) {
+			msg = "Chirp body exceeds maximum length of 140 characters"
+		}
+		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
-
-	if len(chirpRequestData.Body) > maxChirpLength {
-		writeError(w, http.StatusBadRequest, "Chirp body exceeds maximum length of 140 characters")
-		return
-	}
-
-	result := containsProfanity(chirpRequestData.Body)
 
 	createdChirp, err := h.store.CreateChirp(r.Context(), database.CreateChirpParams{
 		ID:     uuid.New(),
-		Body:   result.CleanedBody,
+		Body:   cleanedBody,
 		UserID: userID,
 	})
 

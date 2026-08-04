@@ -1,7 +1,15 @@
 package handler
 
 import (
+	"errors"
 	"strings"
+)
+
+const maxChirpLength = 140
+
+var (
+	ErrChirpEmpty   = errors.New("chirp body cannot be empty")
+	ErrChirpTooLong = errors.New("chirp body exceeds maximum length of 140 characters")
 )
 
 var profanityList = []string{
@@ -10,17 +18,16 @@ var profanityList = []string{
 	"fornax",
 }
 
-type profanityResult struct {
-	HasProfanity bool   `json:"has_profanity"`
-	CleanedBody  string `json:"cleaned_body"`
-}
-
-func containsProfanity(text string) profanityResult {
-	cleaned := replaceProfanity(text)
-	return profanityResult{
-		HasProfanity: cleaned != text,
-		CleanedBody:  cleaned,
+func ValidateChirp(body string) (string, error) {
+	if len(body) == 0 {
+		return "", ErrChirpEmpty
 	}
+
+	if len(body) > maxChirpLength {
+		return "", ErrChirpTooLong
+	}
+
+	return replaceProfanity(body), nil
 }
 
 func replaceProfanity(text string) string {
@@ -33,9 +40,9 @@ func replaceProfanity(text string) string {
 			if idx == -1 {
 				break
 			}
-			// Replace the slice from idx to idx+len(word) with "****"
+			
 			result = result[:idx] + "****" + result[idx+len(word):]
-			// Update lowerText for next iteration (since result changed)
+			
 			lowerText = strings.ToLower(result)
 		}
 	}

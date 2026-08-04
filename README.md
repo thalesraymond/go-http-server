@@ -63,7 +63,6 @@ This project is part of the boot.dev curriculum for learning Go and backend deve
 | Method | Endpoint              | Description                   |
 | ------ | --------------------- | ----------------------------- |
 | GET    | `/api/healthz`        | Health check                  |
-| POST   | `/api/validate_chirp` | Validate chirp content        |
 | GET    | `/admin/metrics`      | Get request metrics           |
 | POST   | `/admin/reset`        | Reset metrics and data        |
 | GET    | `/app/*`              | Static file server            |
