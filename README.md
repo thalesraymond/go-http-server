@@ -120,6 +120,14 @@ The server starts on `:8080`.
 sqlc generate
 ```
 
+### Run tests
+
+Tests run through [gotestsum](https://github.com/gotesttools/gotestsum) (pinned as a Go tool in `go.mod`) with the race detector and coverage:
+
+```bash
+go tool gotestsum --format standard-verbose -- -v -race -cover ./...
+```
+
 ### Testing endpoints
 
 The `requests/` directory contains `.http` files compatible with VS Code's REST Client extension or similar tools.

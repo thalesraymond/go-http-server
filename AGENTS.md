@@ -25,7 +25,7 @@ Go HTTP server built with the standard library (`net/http`, Go 1.25+) as part of
 ## Build and Test
 
 - Build: `go build ./...`
-- Test: `go test ./...`
+- Test: `go tool gotestsum --format standard-verbose -- -v -race -cover ./...`
 - Vet: `go vet ./...`
 - Run: `go run .` with `DB_URL` set in `.env`
 
