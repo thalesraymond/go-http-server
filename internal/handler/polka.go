@@ -10,20 +10,21 @@ import (
 )
 
 type PolkaHandler struct {
-	apiConfig *ApiConfig
 	store     polkaStore
+	logger    Logger
+	handshake *AuthHandshake
 }
 
 type polkaStore interface {
 	UpdateChirpyRedFlag(ctx context.Context, arg database.UpdateChirpyRedFlagParams) (database.User, error)
 }
 
-func NewPolkaHandler(apiConfig *ApiConfig) *PolkaHandler {
-	return &PolkaHandler{apiConfig: apiConfig, store: apiConfig.Database}
+func NewPolkaHandler(store polkaStore, logger Logger, handshake *AuthHandshake) *PolkaHandler {
+	return &PolkaHandler{store: store, logger: logger, handshake: handshake}
 }
 
 func (h *PolkaHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.Handle("/api/polka/webhooks", h.apiConfig.RequirePolkaAuth(http.HandlerFunc(h.PolkaWebhook)))
+	mux.Handle("/api/polka/webhooks", h.handshake.RequirePolkaAuth(http.HandlerFunc(h.PolkaWebhook)))
 }
 
 func (h *PolkaHandler) PolkaWebhook(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +37,7 @@ func (h *PolkaHandler) PolkaWebhook(w http.ResponseWriter, r *http.Request) {
 
 	var req PolkaWebhookRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		h.apiConfig.Logger.Error("Invalid request payload", err)
+		h.logger.Error("Invalid request payload", err)
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
@@ -48,7 +49,7 @@ func (h *PolkaHandler) PolkaWebhook(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := uuid.Parse(req.Data.UserID)
 	if err != nil {
-		h.apiConfig.Logger.Error("Invalid user ID", err)
+		h.logger.Error("Invalid user ID", err)
 		writeError(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
@@ -64,7 +65,7 @@ func (h *PolkaHandler) PolkaWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.apiConfig.Logger.Error("Failed to update user", err)
+		h.logger.Error("Failed to update user", err)
 		writeError(w, http.StatusInternalServerError, "Failed to update user")
 		return
 	}

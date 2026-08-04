@@ -48,32 +48,35 @@ func main() {
 	secret := os.Getenv("SECRET_KEY")
 	polkaKey := os.Getenv("POLKA_KEY")
 	authenticator := auth.NewRealAuthenticator(secret)
-	apiConfig := handler.NewApiConfig(database.New(db), authenticator, polkaKey)
+	dbQuerier := database.New(db)
+	logger := handler.NewLogger()
+	handshake := handler.NewAuthHandshake(logger, authenticator, polkaKey)
+	admin := handler.NewAdmin(dbQuerier, logger)
 
-	serverMux.Handle("/app/", apiConfig.MiddlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./")))))
+	serverMux.Handle("/app/", admin.MiddlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./")))))
 
 	serverMux.HandleFunc("GET /api/healthz", handler.HealthzHandler)
 
-	serverMux.HandleFunc("GET /admin/metrics", apiConfig.HandlerMetrics)
+	serverMux.HandleFunc("GET /admin/metrics", admin.HandlerMetrics)
 
-	serverMux.HandleFunc("POST /admin/reset", apiConfig.HandlerReset)
+	serverMux.HandleFunc("POST /admin/reset", admin.HandlerReset)
 
-	userHandler := handler.NewUserHandler(apiConfig)
+	userHandler := handler.NewUserHandler(dbQuerier, logger, authenticator, handshake)
 	userHandler.RegisterRoutes(serverMux)
 
-	loginHandler := handler.NewLoginHandler(apiConfig)
+	loginHandler := handler.NewLoginHandler(dbQuerier, logger, authenticator)
 	loginHandler.RegisterRoutes(serverMux)
 
-	chiprHandler := handler.NewChirpHandler(apiConfig)
+	chiprHandler := handler.NewChirpHandler(dbQuerier, logger, handshake)
 	chiprHandler.RegisterRoutes(serverMux)
 
-	polkaHandler := handler.NewPolkaHandler(apiConfig)
+	polkaHandler := handler.NewPolkaHandler(dbQuerier, logger, handshake)
 	polkaHandler.RegisterRoutes(serverMux)
 
-	apiConfig.Logger.Info("Starting server on :8080")
+	logger.Info("Starting server on :8080")
 
 	err = server.ListenAndServe()
 	if err != nil {
-		apiConfig.Logger.Error("Failed to start server", err)
+		logger.Error("Failed to start server", err)
 	}
 }

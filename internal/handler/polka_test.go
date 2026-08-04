@@ -14,7 +14,7 @@ import (
 
 // newTestPolkaHandler wires a PolkaHandler around a mock store.
 func newTestPolkaHandler(mock polkaStore) *PolkaHandler {
-	return &PolkaHandler{apiConfig: newTestApiConfig(), store: mock}
+	return NewPolkaHandler(mock, testLogger{}, newTestHandshake())
 }
 
 func TestPolkaWebhook(t *testing.T) {

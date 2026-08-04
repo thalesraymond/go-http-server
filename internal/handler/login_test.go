@@ -15,7 +15,7 @@ import (
 
 // newTestLoginHandler wires a LoginHandler around a mock store and mock authenticator.
 func newTestLoginHandler(mock loginStore, authMock *mockAuthenticator) *LoginHandler {
-	return &LoginHandler{apiConfig: newTestApiConfigWithAuth(authMock), store: mock}
+	return NewLoginHandler(mock, testLogger{}, authMock)
 }
 
 func TestLogin(t *testing.T) {

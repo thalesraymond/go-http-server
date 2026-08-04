@@ -13,7 +13,7 @@ import (
 
 // newTestUserHandler wires a UserHandler around a mock store and mock authenticator.
 func newTestUserHandler(mock userStore, authMock *mockAuthenticator) *UserHandler {
-	return &UserHandler{apiConfig: newTestApiConfigWithAuth(authMock), store: mock}
+	return NewUserHandler(mock, testLogger{}, authMock, newTestHandshake())
 }
 
 func TestCreateUser(t *testing.T) {

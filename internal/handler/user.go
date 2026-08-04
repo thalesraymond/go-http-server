@@ -6,12 +6,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
 type UserHandler struct {
-	apiConfig *ApiConfig
-	store     userStore
+	store         userStore
+	logger        Logger
+	authenticator auth.Authenticator
+	handshake     *AuthHandshake
 }
 
 type userStore interface {
@@ -19,13 +22,13 @@ type userStore interface {
 	UpdateUser(ctx context.Context, arg database.UpdateUserParams) (database.User, error)
 }
 
-func NewUserHandler(apiConfig *ApiConfig) *UserHandler {
-	return &UserHandler{apiConfig: apiConfig, store: apiConfig.Database}
+func NewUserHandler(store userStore, logger Logger, authenticator auth.Authenticator, handshake *AuthHandshake) *UserHandler {
+	return &UserHandler{store: store, logger: logger, authenticator: authenticator, handshake: handshake}
 }
 
 func (h *UserHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/users", h.CreateUser)
-	mux.Handle("PUT /api/users", h.apiConfig.RequireAuth(h.UpdateUserByID))
+	mux.Handle("PUT /api/users", h.handshake.RequireAuth(h.UpdateUserByID))
 }
 
 type CreateUserRequest struct {
@@ -55,14 +58,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var userRequestData CreateUserRequest
 
 	if err := decodeJSON(w, r, &userRequestData); err != nil {
-		h.apiConfig.Logger.Error("Invalid request payload", err)
+		h.logger.Error("Invalid request payload", err)
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	hashedPassword, err := h.apiConfig.Authenticator.HashPassword(userRequestData.Password)
+	hashedPassword, err := h.authenticator.HashPassword(userRequestData.Password)
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to hash password", err)
+		h.logger.Error("Failed to hash password", err)
 		writeError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
@@ -74,7 +77,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to create user", err)
+		h.logger.Error("Failed to create user", err)
 		writeError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
@@ -92,20 +95,20 @@ type UpdateUserRequest struct {
 func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 	var updateUserRequestData UpdateUserRequest
 	if err := decodeJSON(w, r, &updateUserRequestData); err != nil {
-		h.apiConfig.Logger.Error("Invalid request payload", err)
+		h.logger.Error("Invalid request payload", err)
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	if updateUserRequestData.Email == "" || updateUserRequestData.Password == "" {
-		h.apiConfig.Logger.Error("Email and password are required", nil)
+		h.logger.Error("Email and password are required", nil)
 		writeError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}
 
-	hashedPassword, err := h.apiConfig.Authenticator.HashPassword(updateUserRequestData.Password)
+	hashedPassword, err := h.authenticator.HashPassword(updateUserRequestData.Password)
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to hash password", err)
+		h.logger.Error("Failed to hash password", err)
 		writeError(w, http.StatusInternalServerError, "Failed to update user")
 		return
 	}
@@ -116,7 +119,7 @@ func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request, use
 		HashedPassword: hashedPassword,
 	})
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to update user", err)
+		h.logger.Error("Failed to update user", err)
 		writeError(w, http.StatusInternalServerError, "Failed to update user")
 		return
 	}

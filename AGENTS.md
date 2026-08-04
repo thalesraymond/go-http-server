@@ -5,16 +5,18 @@ Go HTTP server built with the standard library (`net/http`, Go 1.25+) as part of
 ## Architecture
 
 - `main.go` — server entry point and route registration
-- `internal/handler/` — HTTP handlers and middleware; handlers share state via the `apiConfig` type in `api_config.go`
+- `internal/handler/` — HTTP handlers and middleware; handlers take explicit dependencies (store interface, `Logger`, `Authenticator`, `AuthHandshake`) in their constructors
+  - `admin.go` — `Admin` module: file-server metrics and reset endpoints
+  - `logger.go` — `Logger` interface + `defaultLogger` implementation
   - `user.go` — user registration and update endpoints
   - `login.go` — login, refresh token, and revoke endpoints
   - `chirp.go` — chirp CRUD endpoints
   - `polka.go` — webhook handler for Polka events
-  - `middleware.go` — JWT authentication middleware
+  - `middleware.go` — `AuthHandshake` module: `RequireAuth` (JWT) and `RequirePolkaAuth` (API key) middleware
   - `healthz.go` — health check endpoint
-  - `respond.go` — response helpers (`returnWithJSON`, `returnWithError`)
+  - `respond.go` — response helpers (`writeJSON`, `writeError`)
   - `validate_chirp.go` — chirp content validation
-- `internal/auth/` — identity primitives. `Authenticator` interface + `RealAuthenticator` adapter (argon2id hashing, JWT access tokens, refresh tokens); handlers receive it via `ApiConfig` (see `api_config.go`), and tests inject a stub instead of mutating package state. `token.go` holds standalone header parsers (`GetBearerToken`, `GetAPIKey`)
+- `internal/auth/` — identity primitives. `Authenticator` interface + `RealAuthenticator` adapter (argon2id hashing, JWT access tokens, refresh tokens); handlers receive it as an explicit constructor dependency, and tests inject a stub instead of mutating package state. `token.go` holds standalone header parsers (`GetBearerToken`, `GetAPIKey`)
 - `internal/database/` — **generated sqlc code; never hand-edit**. Change `sql/queries/*.sql` instead, then run `sqlc generate`
 - `sql/schema/` — goose migrations; apply with `./goose.sh up` (requires `.env` with `DB_URL`)
 - `requests/*.http` — REST Client request examples, organized one file per endpoint group

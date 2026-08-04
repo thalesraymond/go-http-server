@@ -11,8 +11,9 @@ import (
 )
 
 type ChirpHandler struct {
-	apiConfig *ApiConfig
 	store     chirpStore
+	logger    Logger
+	handshake *AuthHandshake
 }
 
 type chirpStore interface {
@@ -23,15 +24,15 @@ type chirpStore interface {
 	DeleteChirpByID(ctx context.Context, id uuid.UUID) error
 }
 
-func NewChirpHandler(apiConfig *ApiConfig) *ChirpHandler {
-	return &ChirpHandler{apiConfig: apiConfig, store: apiConfig.Database}
+func NewChirpHandler(store chirpStore, logger Logger, handshake *AuthHandshake) *ChirpHandler {
+	return &ChirpHandler{store: store, logger: logger, handshake: handshake}
 }
 
 func (h *ChirpHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.Handle("POST /api/chirps", h.apiConfig.RequireAuth(h.CreateChirp))
+	mux.Handle("POST /api/chirps", h.handshake.RequireAuth(h.CreateChirp))
 	mux.HandleFunc("GET /api/chirps", h.GetChirps)
 	mux.HandleFunc("GET /api/chirps/{id}", h.GetChirpByID)
-	mux.Handle("DELETE /api/chirps/{id}", h.apiConfig.RequireAuth(h.DeleteChirpByID))
+	mux.Handle("DELETE /api/chirps/{id}", h.handshake.RequireAuth(h.DeleteChirpByID))
 }
 
 type CreateChirpRequest struct {
@@ -62,7 +63,7 @@ func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request, userI
 	var chirpRequestData CreateChirpRequest
 
 	if err := decodeJSON(w, r, &chirpRequestData); err != nil {
-		h.apiConfig.Logger.Error("Invalid request payload", err)
+		h.logger.Error("Invalid request payload", err)
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
@@ -86,7 +87,7 @@ func (h *ChirpHandler) CreateChirp(w http.ResponseWriter, r *http.Request, userI
 	})
 
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to create chirp", err)
+		h.logger.Error("Failed to create chirp", err)
 		writeError(w, http.StatusInternalServerError, "Failed to create chirp")
 		return
 	}
@@ -104,7 +105,7 @@ func (h *ChirpHandler) GetChirps(w http.ResponseWriter, r *http.Request) {
 		var err error
 		authorUUID, err = uuid.Parse(authorId)
 		if err != nil {
-			h.apiConfig.Logger.Error("Invalid author ID", err)
+			h.logger.Error("Invalid author ID", err)
 			writeError(w, http.StatusBadRequest, "Invalid author ID")
 			return
 		}
@@ -124,7 +125,7 @@ func (h *ChirpHandler) GetChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to get chirps", err)
+		h.logger.Error("Failed to get chirps", err)
 		writeError(w, http.StatusInternalServerError, "Failed to get chirps")
 		return
 	}
@@ -142,7 +143,7 @@ func (h *ChirpHandler) GetChirpByID(w http.ResponseWriter, r *http.Request) {
 
 	chirpUUID, err := uuid.Parse(chirpID)
 	if err != nil {
-		h.apiConfig.Logger.Error("Invalid chirp ID", err)
+		h.logger.Error("Invalid chirp ID", err)
 		writeError(w, http.StatusBadRequest, "Invalid chirp ID")
 		return
 	}
@@ -154,7 +155,7 @@ func (h *ChirpHandler) GetChirpByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.apiConfig.Logger.Error("Failed to get chirp by ID", err)
+		h.logger.Error("Failed to get chirp by ID", err)
 		writeError(w, http.StatusInternalServerError, "Failed to get chirp by ID")
 		return
 	}
@@ -167,7 +168,7 @@ func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request, u
 
 	chirpUUID, err := uuid.Parse(chirpID)
 	if err != nil {
-		h.apiConfig.Logger.Error("Invalid chirp ID", err)
+		h.logger.Error("Invalid chirp ID", err)
 		writeError(w, http.StatusBadRequest, "Invalid chirp ID")
 		return
 	}
@@ -179,7 +180,7 @@ func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request, u
 			return
 		}
 
-		h.apiConfig.Logger.Error("Failed to get chirp by ID", err)
+		h.logger.Error("Failed to get chirp by ID", err)
 		writeError(w, http.StatusInternalServerError, "Failed to get chirp by ID")
 		return
 	}
@@ -191,7 +192,7 @@ func (h *ChirpHandler) DeleteChirpByID(w http.ResponseWriter, r *http.Request, u
 
 	err = h.store.DeleteChirpByID(r.Context(), chirpUUID)
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to delete chirp by ID", err)
+		h.logger.Error("Failed to delete chirp by ID", err)
 		writeError(w, http.StatusInternalServerError, "Failed to delete chirp by ID")
 		return
 	}

@@ -9,18 +9,32 @@ import (
 
 type AuthedHandler func(w http.ResponseWriter, r *http.Request, userID uuid.UUID)
 
-func (cfg *ApiConfig) RequireAuth(next AuthedHandler) http.Handler {
+type AuthHandshake struct {
+	logger        Logger
+	authenticator auth.Authenticator
+	polkaKey      string
+}
+
+func NewAuthHandshake(logger Logger, authenticator auth.Authenticator, polkaKey string) *AuthHandshake {
+	return &AuthHandshake{
+		logger:        logger,
+		authenticator: authenticator,
+		polkaKey:      polkaKey,
+	}
+}
+
+func (hs *AuthHandshake) RequireAuth(next AuthedHandler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := auth.GetBearerToken(r.Header)
 		if err != nil {
-			cfg.Logger.Error("Missing or invalid Authorization header", err)
+			hs.logger.Error("Missing or invalid Authorization header", err)
 			writeError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 
-		userID, err := cfg.Authenticator.ValidateJWT(token)
+		userID, err := hs.authenticator.ValidateJWT(token)
 		if err != nil {
-			cfg.Logger.Error("Invalid or expired JWT", err)
+			hs.logger.Error("Invalid or expired JWT", err)
 			writeError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
@@ -29,11 +43,11 @@ func (cfg *ApiConfig) RequireAuth(next AuthedHandler) http.Handler {
 	})
 }
 
-func (cfg *ApiConfig) RequirePolkaAuth(next http.Handler) http.Handler {
+func (hs *AuthHandshake) RequirePolkaAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiKey, err := auth.GetAPIKey(r.Header)
-		if err != nil || apiKey != cfg.PolkaKey {
-			cfg.Logger.Error("Missing or invalid Polka API key", err)
+		if err != nil || apiKey != hs.polkaKey {
+			hs.logger.Error("Missing or invalid Polka API key", err)
 			writeError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}

@@ -18,4 +18,4 @@ A handler that receives a validated `userID` as a parameter instead of spelunkin
 
 ## Auth handshake
 
-The transformation from "an HTTP request with an `Authorization: Bearer` header" to "a validated `userID`". Lives behind `RequireAuth` in `internal/handler/middleware.go`.
+The transformation from "an HTTP request with an `Authorization: Bearer` header" to "a validated `userID`". Lives behind the `AuthHandshake` module (`RequireAuth` / `RequirePolkaAuth`) in `internal/handler/middleware.go`, injected into the handlers that register protected routes.

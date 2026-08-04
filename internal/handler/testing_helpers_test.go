@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/thalesraymond/go-http-server/internal/auth"
 )
 
 // testUserID is the fixed identity used to exercise authenticated handlers.
@@ -114,24 +115,10 @@ func (m *mockAuthenticator) MakeRefreshToken() string {
 	return m.makeRefreshTokenFn()
 }
 
-// newTestApiConfig returns an ApiConfig wired for tests: a silent logger,
-// a default mockAuthenticator, and fixed secrets.
-func newTestApiConfig() *ApiConfig {
-	return &ApiConfig{
-		Authenticator: newDefaultMockAuthenticator(),
-		Logger:        testLogger{},
-		PolkaKey:      "test-polka-key",
-	}
-}
-
-// newTestApiConfigWithAuth returns an ApiConfig with a specific
-// mockAuthenticator injected.
-func newTestApiConfigWithAuth(mock *mockAuthenticator) *ApiConfig {
-	return &ApiConfig{
-		Authenticator: mock,
-		Logger:        testLogger{},
-		PolkaKey:      "test-polka-key",
-	}
+// newTestHandshake returns an AuthHandshake wired for tests: a silent
+// logger, a default mockAuthenticator, and a fixed Polka key.
+func newTestHandshake() *AuthHandshake {
+	return NewAuthHandshake(testLogger{}, newDefaultMockAuthenticator(), "test-polka-key")
 }
 
 // newTestRequest builds a request with a JSON content type. Pass an empty
@@ -147,10 +134,10 @@ func newTestRequest(t *testing.T, method, target, body string) *http.Request {
 	return req
 }
 
-// withAuth attaches a valid Bearer JWT for userID, signed with the config's
+// withAuth attaches a valid Bearer JWT for userID, signed with the given
 // authenticator, so requests pass through RequireAuth.
-func withAuth(r *http.Request, cfg *ApiConfig, userID uuid.UUID) *http.Request {
-	token, err := cfg.Authenticator.MakeJWT(userID, time.Hour)
+func withAuth(r *http.Request, authenticator auth.Authenticator, userID uuid.UUID) *http.Request {
+	token, err := authenticator.MakeJWT(userID, time.Hour)
 	if err != nil {
 		panic(err)
 	}

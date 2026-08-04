@@ -41,12 +41,13 @@ This project is part of the boot.dev curriculum for learning Go and backend deve
 │   │   ├── chirps.sql.go
 │   │   └── refresh_tokens.sql.go
 │   └── handler/                  # HTTP handlers & middleware
-│       ├── api_config.go         # Shared config (DB, metrics, logger)
+│       ├── admin.go              # Metrics & reset endpoints
+│       ├── logger.go             # Logger interface & default implementation
 │       ├── user.go               # User endpoints
 │       ├── login.go              # Login / refresh / revoke endpoints
 │       ├── chirp.go              # Chirp endpoints
 │       ├── polka.go              # Polka webhook handler
-│       ├── middleware.go         # Auth middleware
+│       ├── middleware.go         # Auth handshake (RequireAuth / RequirePolkaAuth)
 │       ├── healthz.go            # Health check
 │       ├── respond.go            # Response helpers
 │       └── validate_chirp.go     # Chirp content validation

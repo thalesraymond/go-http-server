@@ -14,19 +14,21 @@ import (
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
-// newTestChirpHandler wires a ChirpHandler around a mock store.
-func newTestChirpHandler(mock chirpStore) (*ApiConfig, *ChirpHandler) {
-	cfg := newTestApiConfig()
-	return cfg, &ChirpHandler{apiConfig: cfg, store: mock}
+// newTestChirpHandler wires a ChirpHandler around a mock store and returns
+// the mockAuthenticator so tests can sign requests with it.
+func newTestChirpHandler(mock chirpStore) (*mockAuthenticator, *ChirpHandler) {
+	authMock := newDefaultMockAuthenticator()
+	h := NewChirpHandler(mock, testLogger{}, NewAuthHandshake(testLogger{}, authMock, "test-polka-key"))
+	return authMock, h
 }
 
 // newTestChirpRouter registers the handler routes so tests can exercise path
 // parameters (r.PathValue) and the RequireAuth middleware.
-func newTestChirpRouter(mock chirpStore) (*ApiConfig, http.Handler) {
-	cfg, h := newTestChirpHandler(mock)
+func newTestChirpRouter(mock chirpStore) (*mockAuthenticator, http.Handler) {
+	authMock, h := newTestChirpHandler(mock)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
-	return cfg, mux
+	return authMock, mux
 }
 
 func TestCreateChirp(t *testing.T) {
@@ -487,11 +489,11 @@ func TestDeleteChirpByID(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			cfg, router := newTestChirpRouter(mock)
+			authMock, router := newTestChirpRouter(mock)
 			rr := httptest.NewRecorder()
 			req := newTestRequest(t, http.MethodDelete, tt.target, "")
 			if tt.withAuth {
-				req = withAuth(req, cfg, tt.authAs)
+				req = withAuth(req, authMock, tt.authAs)
 			}
 
 			router.ServeHTTP(rr, req)

@@ -13,11 +13,7 @@ import (
 func TestRequireAuth(t *testing.T) {
 	secret := "test-secret"
 	authenticator := auth.NewRealAuthenticator(secret)
-	cfg := &ApiConfig{
-		Authenticator: authenticator,
-		Logger:        testLogger{},
-		PolkaKey:      "test-polka-key",
-	}
+	handshake := NewAuthHandshake(testLogger{}, authenticator, "test-polka-key")
 	userID := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 
 	validToken, err := authenticator.MakeJWT(userID, time.Hour)
@@ -84,7 +80,7 @@ func TestRequireAuth(t *testing.T) {
 				req.Header.Set("Authorization", tt.authHeader)
 			}
 
-			cfg.RequireAuth(next).ServeHTTP(rr, req)
+			handshake.RequireAuth(next).ServeHTTP(rr, req)
 
 			wantStatus(t, rr, tt.wantStatus)
 			if tt.wantError != "" {
@@ -100,7 +96,7 @@ func TestRequireAuth(t *testing.T) {
 }
 
 func TestRequirePolkaAuth(t *testing.T) {
-	cfg := newTestApiConfig()
+	handshake := newTestHandshake()
 
 	tests := []struct {
 		name       string
@@ -145,7 +141,7 @@ func TestRequirePolkaAuth(t *testing.T) {
 				req.Header.Set("Authorization", tt.authHeader)
 			}
 
-			cfg.RequirePolkaAuth(next).ServeHTTP(rr, req)
+			handshake.RequirePolkaAuth(next).ServeHTTP(rr, req)
 
 			wantStatus(t, rr, tt.wantStatus)
 			if tt.wantError != "" {

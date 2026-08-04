@@ -13,8 +13,9 @@ import (
 )
 
 type LoginHandler struct {
-	apiConfig *ApiConfig
-	store     loginStore
+	store         loginStore
+	logger        Logger
+	authenticator auth.Authenticator
 }
 
 type loginStore interface {
@@ -24,8 +25,8 @@ type loginStore interface {
 	RevokeRefreshToken(ctx context.Context, token string) error
 }
 
-func NewLoginHandler(apiConfig *ApiConfig) *LoginHandler {
-	return &LoginHandler{apiConfig: apiConfig, store: apiConfig.Database}
+func NewLoginHandler(store loginStore, logger Logger, authenticator auth.Authenticator) *LoginHandler {
+	return &LoginHandler{store: store, logger: logger, authenticator: authenticator}
 }
 
 func (h *LoginHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -54,13 +55,13 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	err := decodeJSON(w, r, &request)
 
 	if err != nil {
-		h.apiConfig.Logger.Error("Invalid request payload", err)
+		h.logger.Error("Invalid request payload", err)
 		writeError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
 	if request.Email == "" || request.Password == "" {
-		h.apiConfig.Logger.Error("Email and password are required", nil)
+		h.logger.Error("Email and password are required", nil)
 		writeError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}
@@ -72,40 +73,40 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.apiConfig.Logger.Error("Failed to get user by email", err)
+		h.logger.Error("Failed to get user by email", err)
 		writeError(w, http.StatusInternalServerError, "Failed to get user by email")
 		return
 	}
 
-	match, err := h.apiConfig.Authenticator.CheckPasswordHash(request.Password, user.HashedPassword)
+	match, err := h.authenticator.CheckPasswordHash(request.Password, user.HashedPassword)
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to check password hash", err)
+		h.logger.Error("Failed to check password hash", err)
 		writeError(w, http.StatusInternalServerError, "Failed to check password hash")
 		return
 	}
 
 	if !match {
-		h.apiConfig.Logger.Error("Incorrect password", nil)
+		h.logger.Error("Incorrect password", nil)
 		writeError(w, http.StatusUnauthorized, "Incorrect email or password")
 		return
 	}
 
-	token, err := h.apiConfig.Authenticator.MakeJWT(user.ID, time.Hour)
+	token, err := h.authenticator.MakeJWT(user.ID, time.Hour)
 
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to generate JWT", err)
+		h.logger.Error("Failed to generate JWT", err)
 		writeError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 
 	refreshToken, err := h.store.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
-		Token:     h.apiConfig.Authenticator.MakeRefreshToken(),
+		Token:     h.authenticator.MakeRefreshToken(),
 		UserID:    user.ID,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	})
 
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to create refresh token", err)
+		h.logger.Error("Failed to create refresh token", err)
 		writeError(w, http.StatusInternalServerError, "Failed to create refresh token")
 		return
 	}
@@ -125,7 +126,7 @@ func (h *LoginHandler) GetRefreshToken(w http.ResponseWriter, r *http.Request) {
 	refreshTokenValue, err := auth.GetBearerToken(r.Header)
 
 	if err != nil {
-		h.apiConfig.Logger.Error("Invalid Authorization header", err)
+		h.logger.Error("Invalid Authorization header", err)
 		writeError(w, http.StatusUnauthorized, "Invalid Authorization header")
 		return
 	}
@@ -133,26 +134,26 @@ func (h *LoginHandler) GetRefreshToken(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := h.store.GetRefreshTokenByID(r.Context(), refreshTokenValue)
 
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to get refresh token", err)
+		h.logger.Error("Failed to get refresh token", err)
 		writeError(w, http.StatusUnauthorized, "Invalid refresh token")
 		return
 	}
 
 	if refreshToken.RevokedAt.Valid {
-		h.apiConfig.Logger.Error("Refresh token revoked", nil)
+		h.logger.Error("Refresh token revoked", nil)
 		writeError(w, http.StatusUnauthorized, "Refresh token revoked")
 		return
 	}
 
 	if refreshToken.ExpiresAt.Before(time.Now()) {
-		h.apiConfig.Logger.Error("Refresh token expired", nil)
+		h.logger.Error("Refresh token expired", nil)
 		writeError(w, http.StatusUnauthorized, "Refresh token expired")
 		return
 	}
 
-	token, err := h.apiConfig.Authenticator.MakeJWT(refreshToken.UserID, time.Hour)
+	token, err := h.authenticator.MakeJWT(refreshToken.UserID, time.Hour)
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to generate JWT", err)
+		h.logger.Error("Failed to generate JWT", err)
 		writeError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
@@ -170,14 +171,14 @@ func (h *LoginHandler) RevokeRefreshToken(w http.ResponseWriter, r *http.Request
 	refreshTokenValue, err := auth.GetBearerToken(r.Header)
 
 	if err != nil {
-		h.apiConfig.Logger.Error("Invalid Authorization header", err)
+		h.logger.Error("Invalid Authorization header", err)
 		writeError(w, http.StatusUnauthorized, "Invalid Authorization header")
 		return
 	}
 
 	err = h.store.RevokeRefreshToken(r.Context(), refreshTokenValue)
 	if err != nil {
-		h.apiConfig.Logger.Error("Failed to remove refresh token", err)
+		h.logger.Error("Failed to remove refresh token", err)
 		writeError(w, http.StatusInternalServerError, "Failed to remove refresh token")
 		return
 	}
