@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
@@ -61,7 +60,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword, err := auth.HashPassword(userRequestData.Password)
+	hashedPassword, err := h.apiConfig.Authenticator.HashPassword(userRequestData.Password)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to hash password", err)
 		writeError(w, http.StatusInternalServerError, "Failed to create user")
@@ -104,7 +103,7 @@ func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 
-	hashedPassword, err := auth.HashPassword(updateUserRequestData.Password)
+	hashedPassword, err := h.apiConfig.Authenticator.HashPassword(updateUserRequestData.Password)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to hash password", err)
 		writeError(w, http.StatusInternalServerError, "Failed to update user")

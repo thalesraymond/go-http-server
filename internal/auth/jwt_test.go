@@ -9,11 +9,11 @@ import (
 )
 
 func TestMakeJWT_Success(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
 	userID := uuid.New()
-	secret := "test-secret"
 	expiresIn := time.Hour
 
-	tokenString, err := MakeJWT(userID, secret, expiresIn)
+	tokenString, err := authenticator.MakeJWT(userID, expiresIn)
 	if err != nil {
 		t.Fatalf("MakeJWT returned error: %v", err)
 	}
@@ -23,13 +23,14 @@ func TestMakeJWT_Success(t *testing.T) {
 }
 
 func TestMakeJWT_Claims(t *testing.T) {
-	userID := uuid.New()
 	secret := "test-secret"
+	authenticator := NewRealAuthenticator(secret)
+	userID := uuid.New()
 	expiresIn := time.Hour
 
 	before := time.Now().UTC()
 
-	tokenString, err := MakeJWT(userID, secret, expiresIn)
+	tokenString, err := authenticator.MakeJWT(userID, expiresIn)
 	if err != nil {
 		t.Fatalf("MakeJWT returned error: %v", err)
 	}
@@ -71,11 +72,12 @@ func TestMakeJWT_Claims(t *testing.T) {
 }
 
 func TestMakeJWT_WrongSecret(t *testing.T) {
-	userID := uuid.New()
 	secret := "test-secret"
+	authenticator := NewRealAuthenticator(secret)
+	userID := uuid.New()
 	expiresIn := time.Hour
 
-	tokenString, err := MakeJWT(userID, secret, expiresIn)
+	tokenString, err := authenticator.MakeJWT(userID, expiresIn)
 	if err != nil {
 		t.Fatalf("MakeJWT returned error: %v", err)
 	}
@@ -90,10 +92,10 @@ func TestMakeJWT_WrongSecret(t *testing.T) {
 }
 
 func TestMakeJWT_Expired(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
 	userID := uuid.New()
-	secret := "test-secret"
 
-	tokenString, err := MakeJWT(userID, secret, time.Millisecond)
+	tokenString, err := authenticator.MakeJWT(userID, time.Millisecond)
 	if err != nil {
 		t.Fatalf("MakeJWT returned error: %v", err)
 	}
@@ -102,7 +104,7 @@ func TestMakeJWT_Expired(t *testing.T) {
 
 	claims := jwt.RegisteredClaims{}
 	_, err = jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
+		return []byte("test-secret"), nil
 	})
 	if err == nil {
 		t.Fatal("expected error for expired token, got nil")
@@ -110,20 +112,91 @@ func TestMakeJWT_Expired(t *testing.T) {
 }
 
 func TestMakeJWT_DifferentUserIDs(t *testing.T) {
-	secret := "test-secret"
+	authenticator := NewRealAuthenticator("test-secret")
 	expiresIn := time.Hour
 
-	token1, err := MakeJWT(uuid.New(), secret, expiresIn)
+	token1, err := authenticator.MakeJWT(uuid.New(), expiresIn)
 	if err != nil {
 		t.Fatalf("MakeJWT returned error: %v", err)
 	}
 
-	token2, err := MakeJWT(uuid.New(), secret, expiresIn)
+	token2, err := authenticator.MakeJWT(uuid.New(), expiresIn)
 	if err != nil {
 		t.Fatalf("MakeJWT returned error: %v", err)
 	}
 
 	if token1 == token2 {
 		t.Fatal("expected different tokens for different user IDs")
+	}
+}
+
+func TestValidateJWT_RoundTrip(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
+	userID := uuid.New()
+
+	tokenString, err := authenticator.MakeJWT(userID, time.Hour)
+	if err != nil {
+		t.Fatalf("MakeJWT returned error: %v", err)
+	}
+
+	got, err := authenticator.ValidateJWT(tokenString)
+	if err != nil {
+		t.Fatalf("ValidateJWT returned error: %v", err)
+	}
+	if got != userID {
+		t.Errorf("ValidateJWT returned userID = %v, want %v", got, userID)
+	}
+}
+
+func TestValidateJWT_WrongSecret(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
+	other := NewRealAuthenticator("wrong-secret")
+	userID := uuid.New()
+
+	tokenString, err := authenticator.MakeJWT(userID, time.Hour)
+	if err != nil {
+		t.Fatalf("MakeJWT returned error: %v", err)
+	}
+
+	if _, err := other.ValidateJWT(tokenString); err == nil {
+		t.Fatal("expected error for token signed with a different secret, got nil")
+	}
+}
+
+func TestValidateJWT_Expired(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
+	userID := uuid.New()
+
+	tokenString, err := authenticator.MakeJWT(userID, time.Millisecond)
+	if err != nil {
+		t.Fatalf("MakeJWT returned error: %v", err)
+	}
+
+	time.Sleep(2 * time.Millisecond)
+
+	if _, err := authenticator.ValidateJWT(tokenString); err == nil {
+		t.Fatal("expected error for expired token, got nil")
+	}
+}
+
+func TestValidateJWT_Malformed(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
+
+	if _, err := authenticator.ValidateJWT("not-a-jwt"); err == nil {
+		t.Fatal("expected error for malformed token, got nil")
+	}
+}
+
+func TestMakeRefreshToken(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
+
+	token1 := authenticator.MakeRefreshToken()
+	token2 := authenticator.MakeRefreshToken()
+
+	if len(token1) != 64 {
+		t.Errorf("refresh token length = %d, want 64", len(token1))
+	}
+	if token1 == token2 {
+		t.Fatal("expected different refresh tokens")
 	}
 }

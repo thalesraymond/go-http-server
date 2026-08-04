@@ -7,9 +7,6 @@ import (
 	"github.com/thalesraymond/go-http-server/internal/auth"
 )
 
-// AuthedHandler receives a validated userID as a parameter. The 401 flow
-// (bearer parse, JWT validation) lives behind RequireAuth, so a handler
-// can never see a missing or forged userID.
 type AuthedHandler func(w http.ResponseWriter, r *http.Request, userID uuid.UUID)
 
 func (cfg *ApiConfig) RequireAuth(next AuthedHandler) http.Handler {
@@ -21,7 +18,7 @@ func (cfg *ApiConfig) RequireAuth(next AuthedHandler) http.Handler {
 			return
 		}
 
-		userID, err := auth.ValidateJWT(token, cfg.Secret)
+		userID, err := cfg.Authenticator.ValidateJWT(token)
 		if err != nil {
 			cfg.Logger.Error("Invalid or expired JWT", err)
 			writeError(w, http.StatusUnauthorized, "Unauthorized")

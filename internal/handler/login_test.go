@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
@@ -60,21 +59,12 @@ func (m *mockLoginStore) RevokeRefreshToken(ctx context.Context, token string) e
 	return m.revokeRefreshTokenFn(ctx, token)
 }
 
-// newTestLoginHandler wires a LoginHandler around a mock store.
-func newTestLoginHandler(mock loginStore) *LoginHandler {
-	return &LoginHandler{apiConfig: newTestApiConfig(), store: mock}
+// newTestLoginHandler wires a LoginHandler around a mock store and mock authenticator.
+func newTestLoginHandler(mock loginStore, authMock *mockAuthenticator) *LoginHandler {
+	return &LoginHandler{apiConfig: newTestApiConfigWithAuth(authMock), store: mock}
 }
 
 func TestLogin(t *testing.T) {
-	originalCheck := auth.CheckPasswordHash
-	originalJWT := auth.MakeJWT
-	originalRefresh := auth.MakeRefreshToken
-	t.Cleanup(func() {
-		auth.CheckPasswordHash = originalCheck
-		auth.MakeJWT = originalJWT
-		auth.MakeRefreshToken = originalRefresh
-	})
-
 	userID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	loginUser := database.User{
 		ID:             userID,
@@ -202,35 +192,22 @@ func TestLogin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// The auth helpers are package-level vars; subtests run
-			// sequentially, so each case swaps in its own stubs and the
-			// test-level cleanup restores the originals.
-			checkHash := func(password, hash string) (bool, error) {
-				return true, nil
-			}
+			authMock := newDefaultMockAuthenticator()
 			if tt.checkHash != nil {
-				checkHash = tt.checkHash
-			}
-			auth.CheckPasswordHash = checkHash
-
-			makeJWT := func(userID uuid.UUID, secret string, expiresIn time.Duration) (string, error) {
-				return "test-access-token", nil
+				authMock.checkPasswordFn = tt.checkHash
 			}
 			if tt.makeJWTErr {
-				makeJWT = func(userID uuid.UUID, secret string, expiresIn time.Duration) (string, error) {
+				authMock.makeJWTFn = func(userID uuid.UUID, expiresIn time.Duration) (string, error) {
 					return "", errors.New("jwt failure")
 				}
 			}
-			auth.MakeJWT = makeJWT
-
-			auth.MakeRefreshToken = func() string { return "test-refresh-token" }
 
 			mock := &mockLoginStore{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
 
-			h := newTestLoginHandler(mock)
+			h := newTestLoginHandler(mock, authMock)
 			rr := httptest.NewRecorder()
 			req := newTestRequest(t, http.MethodPost, "/api/login", tt.body)
 
@@ -277,9 +254,6 @@ func TestLogin(t *testing.T) {
 }
 
 func TestGetRefreshToken(t *testing.T) {
-	originalJWT := auth.MakeJWT
-	t.Cleanup(func() { auth.MakeJWT = originalJWT })
-
 	valid := database.RefreshToken{
 		Token:     "rt-valid",
 		ExpiresAt: time.Now().Add(time.Hour),
@@ -365,22 +339,19 @@ func TestGetRefreshToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			makeJWT := func(userID uuid.UUID, secret string, expiresIn time.Duration) (string, error) {
-				return "test-access-token", nil
-			}
+			authMock := newDefaultMockAuthenticator()
 			if tt.makeJWTErr {
-				makeJWT = func(userID uuid.UUID, secret string, expiresIn time.Duration) (string, error) {
+				authMock.makeJWTFn = func(userID uuid.UUID, expiresIn time.Duration) (string, error) {
 					return "", errors.New("jwt failure")
 				}
 			}
-			auth.MakeJWT = makeJWT
 
 			mock := &mockLoginStore{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
 
-			h := newTestLoginHandler(mock)
+			h := newTestLoginHandler(mock, authMock)
 			rr := httptest.NewRecorder()
 			req := newTestRequest(t, http.MethodPost, "/api/refresh", "")
 			if tt.authHeader != "" {
@@ -454,7 +425,8 @@ func TestRevokeRefreshToken(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			h := newTestLoginHandler(mock)
+			authMock := newDefaultMockAuthenticator()
+			h := newTestLoginHandler(mock, authMock)
 			rr := httptest.NewRecorder()
 			req := newTestRequest(t, http.MethodPost, "/api/revoke", "")
 			if tt.authHeader != "" {

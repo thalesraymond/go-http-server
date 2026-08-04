@@ -11,18 +11,24 @@ import (
 )
 
 func TestRequireAuth(t *testing.T) {
-	cfg := newTestApiConfig()
+	secret := "test-secret"
+	authenticator := auth.NewRealAuthenticator(secret)
+	cfg := &ApiConfig{
+		Authenticator: authenticator,
+		Logger:        testLogger{},
+		PolkaKey:      "test-polka-key",
+	}
 	userID := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 
-	validToken, err := auth.MakeJWT(userID, cfg.Secret, time.Hour)
+	validToken, err := authenticator.MakeJWT(userID, time.Hour)
 	if err != nil {
 		t.Fatalf("MakeJWT: %v", err)
 	}
-	wrongSecretToken, err := auth.MakeJWT(userID, "wrong-secret", time.Hour)
+	wrongSecretToken, err := auth.NewRealAuthenticator("wrong-secret").MakeJWT(userID, time.Hour)
 	if err != nil {
 		t.Fatalf("MakeJWT: %v", err)
 	}
-	expiredToken, err := auth.MakeJWT(userID, cfg.Secret, -time.Hour)
+	expiredToken, err := authenticator.MakeJWT(userID, -time.Hour)
 	if err != nil {
 		t.Fatalf("MakeJWT: %v", err)
 	}

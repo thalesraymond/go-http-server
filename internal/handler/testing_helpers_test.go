@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/thalesraymond/go-http-server/internal/auth"
 )
 
 // testUserID is the fixed identity used to exercise authenticated handlers.
@@ -29,14 +28,109 @@ func (testLogger) Info(msg string)             {}
 func (testLogger) Debug(msg string)            {}
 func (testLogger) Warn(msg string)             {}
 
-// newTestApiConfig returns an ApiConfig wired for tests: a silent logger and
-// fixed secrets. It has no database — mock stores are injected straight into
-// each handler's unexported store field.
+// mockAuthenticator implements auth.Authenticator with per-method stub
+// functions. Each method records its arguments so tests can assert on them.
+type mockAuthenticator struct {
+	hashPasswordFn     func(password string) (string, error)
+	checkPasswordFn    func(password, hash string) (bool, error)
+	makeJWTFn          func(userID uuid.UUID, expiresIn time.Duration) (string, error)
+	validateJWTFn      func(tokenString string) (uuid.UUID, error)
+	makeRefreshTokenFn func() string
+
+	hashPasswordArg   string
+	checkPasswordArgs struct{ password, hash string }
+	makeJWTArgs       struct {
+		userID    uuid.UUID
+		expiresIn time.Duration
+	}
+	validateJWTArg        string
+	makeRefreshTokenCalls int
+}
+
+// newDefaultMockAuthenticator returns a mockAuthenticator with sensible
+// defaults: hashing prefixes "hashed:", password check always succeeds,
+// JWT creation succeeds with a fixed token, refresh token returns a
+// fixed string. ValidateJWT has no stub, so it falls back to returning
+// the userID from the most recent MakeJWT call, mirroring the real
+// authenticator's round-trip behavior.
+func newDefaultMockAuthenticator() *mockAuthenticator {
+	return &mockAuthenticator{
+		hashPasswordFn: func(password string) (string, error) {
+			return "hashed:" + password, nil
+		},
+		checkPasswordFn: func(password, hash string) (bool, error) {
+			return true, nil
+		},
+		makeJWTFn: func(userID uuid.UUID, expiresIn time.Duration) (string, error) {
+			return "test-access-token", nil
+		},
+		makeRefreshTokenFn: func() string {
+			return "test-refresh-token"
+		},
+	}
+}
+
+func (m *mockAuthenticator) HashPassword(password string) (string, error) {
+	m.hashPasswordArg = password
+	if m.hashPasswordFn == nil {
+		return "", errUnstubbed
+	}
+	return m.hashPasswordFn(password)
+}
+
+func (m *mockAuthenticator) CheckPasswordHash(password, hash string) (bool, error) {
+	m.checkPasswordArgs.password = password
+	m.checkPasswordArgs.hash = hash
+	if m.checkPasswordFn == nil {
+		return false, errUnstubbed
+	}
+	return m.checkPasswordFn(password, hash)
+}
+
+func (m *mockAuthenticator) MakeJWT(userID uuid.UUID, expiresIn time.Duration) (string, error) {
+	m.makeJWTArgs.userID = userID
+	m.makeJWTArgs.expiresIn = expiresIn
+	if m.makeJWTFn == nil {
+		return "", errUnstubbed
+	}
+	return m.makeJWTFn(userID, expiresIn)
+}
+
+func (m *mockAuthenticator) ValidateJWT(tokenString string) (uuid.UUID, error) {
+	m.validateJWTArg = tokenString
+	if m.validateJWTFn == nil {
+		// Default: mimic the real authenticator and return the userID
+		// embedded by the most recent MakeJWT call.
+		return m.makeJWTArgs.userID, nil
+	}
+	return m.validateJWTFn(tokenString)
+}
+
+func (m *mockAuthenticator) MakeRefreshToken() string {
+	m.makeRefreshTokenCalls++
+	if m.makeRefreshTokenFn == nil {
+		return errUnstubbed.Error()
+	}
+	return m.makeRefreshTokenFn()
+}
+
+// newTestApiConfig returns an ApiConfig wired for tests: a silent logger,
+// a default mockAuthenticator, and fixed secrets.
 func newTestApiConfig() *ApiConfig {
 	return &ApiConfig{
-		Logger:   testLogger{},
-		Secret:   "test-secret",
-		PolkaKey: "test-polka-key",
+		Authenticator: newDefaultMockAuthenticator(),
+		Logger:        testLogger{},
+		PolkaKey:      "test-polka-key",
+	}
+}
+
+// newTestApiConfigWithAuth returns an ApiConfig with a specific
+// mockAuthenticator injected.
+func newTestApiConfigWithAuth(mock *mockAuthenticator) *ApiConfig {
+	return &ApiConfig{
+		Authenticator: mock,
+		Logger:        testLogger{},
+		PolkaKey:      "test-polka-key",
 	}
 }
 
@@ -54,9 +148,9 @@ func newTestRequest(t *testing.T, method, target, body string) *http.Request {
 }
 
 // withAuth attaches a valid Bearer JWT for userID, signed with the config's
-// secret, so requests pass through RequireAuth.
+// authenticator, so requests pass through RequireAuth.
 func withAuth(r *http.Request, cfg *ApiConfig, userID uuid.UUID) *http.Request {
-	token, err := auth.MakeJWT(userID, cfg.Secret, time.Hour)
+	token, err := cfg.Authenticator.MakeJWT(userID, time.Hour)
 	if err != nil {
 		panic(err)
 	}

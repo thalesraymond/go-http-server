@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
@@ -38,15 +37,12 @@ func (m *mockUserStore) UpdateUser(ctx context.Context, arg database.UpdateUserP
 	return m.updateUserFn(ctx, arg)
 }
 
-// newTestUserHandler wires a UserHandler around a mock store.
-func newTestUserHandler(mock userStore) *UserHandler {
-	return &UserHandler{apiConfig: newTestApiConfig(), store: mock}
+// newTestUserHandler wires a UserHandler around a mock store and mock authenticator.
+func newTestUserHandler(mock userStore, authMock *mockAuthenticator) *UserHandler {
+	return &UserHandler{apiConfig: newTestApiConfigWithAuth(authMock), store: mock}
 }
 
 func TestCreateUser(t *testing.T) {
-	originalHash := auth.HashPassword
-	t.Cleanup(func() { auth.HashPassword = originalHash })
-
 	createdAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 
 	tests := []struct {
@@ -104,25 +100,21 @@ func TestCreateUser(t *testing.T) {
 			// HashPassword is a package-level var; subtests run sequentially,
 			// so each case can swap in its own stub and the test-level
 			// cleanup restores the original.
-			hashPassword := func(password string) (string, error) {
-				return "hashed:" + password, nil
-			}
+			authMock := newDefaultMockAuthenticator()
 			if tt.hashError {
-				hashPassword = func(password string) (string, error) {
+				authMock.hashPasswordFn = func(password string) (string, error) {
 					return "", errors.New("hash failure")
 				}
 			}
-			auth.HashPassword = hashPassword
 
 			mock := &mockUserStore{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
 
-			h := newTestUserHandler(mock)
+			h := newTestUserHandler(mock, authMock)
 			rr := httptest.NewRecorder()
 			req := newTestRequest(t, http.MethodPost, "/api/users", tt.body)
-
 			h.CreateUser(rr, req)
 
 			wantStatus(t, rr, tt.wantStatus)
@@ -154,9 +146,6 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestUpdateUserByID(t *testing.T) {
-	originalHash := auth.HashPassword
-	t.Cleanup(func() { auth.HashPassword = originalHash })
-
 	tests := []struct {
 		name       string
 		body       string
@@ -219,25 +208,21 @@ func TestUpdateUserByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hashPassword := func(password string) (string, error) {
-				return "hashed:" + password, nil
-			}
+			authMock := newDefaultMockAuthenticator()
 			if tt.hashError {
-				hashPassword = func(password string) (string, error) {
+				authMock.hashPasswordFn = func(password string) (string, error) {
 					return "", errors.New("hash failure")
 				}
 			}
-			auth.HashPassword = hashPassword
 
 			mock := &mockUserStore{}
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
 
-			h := newTestUserHandler(mock)
+			h := newTestUserHandler(mock, authMock)
 			rr := httptest.NewRecorder()
 			req := newTestRequest(t, http.MethodPut, "/api/users", tt.body)
-
 			h.UpdateUserByID(rr, req, testUserID)
 
 			wantStatus(t, rr, tt.wantStatus)

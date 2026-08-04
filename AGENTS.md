@@ -14,7 +14,7 @@ Go HTTP server built with the standard library (`net/http`, Go 1.25+) as part of
   - `healthz.go` — health check endpoint
   - `respond.go` — response helpers (`returnWithJSON`, `returnWithError`)
   - `validate_chirp.go` — chirp content validation
-- `internal/auth/` — authentication primitives: password hashing (argon2id), JWT access tokens, opaque refresh tokens
+- `internal/auth/` — identity primitives. `Authenticator` interface + `RealAuthenticator` adapter (argon2id hashing, JWT access tokens, refresh tokens); handlers receive it via `ApiConfig` (see `api_config.go`), and tests inject a stub instead of mutating package state. `token.go` holds standalone header parsers (`GetBearerToken`, `GetAPIKey`)
 - `internal/database/` — **generated sqlc code; never hand-edit**. Change `sql/queries/*.sql` instead, then run `sqlc generate`
 - `sql/schema/` — goose migrations; apply with `./goose.sh up` (requires `.env` with `DB_URL`)
 - `requests/*.http` — REST Client request examples, organized one file per endpoint group

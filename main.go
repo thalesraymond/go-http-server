@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 	"github.com/thalesraymond/go-http-server/internal/handler"
 
@@ -46,7 +47,8 @@ func main() {
 
 	secret := os.Getenv("SECRET_KEY")
 	polkaKey := os.Getenv("POLKA_KEY")
-	apiConfig := handler.NewApiConfig(database.New(db), secret, polkaKey)
+	authenticator := auth.NewRealAuthenticator(secret)
+	apiConfig := handler.NewApiConfig(database.New(db), authenticator, polkaKey)
 
 	serverMux.Handle("/app/", apiConfig.MiddlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./")))))
 

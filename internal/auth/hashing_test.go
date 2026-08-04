@@ -3,9 +3,10 @@ package auth
 import "testing"
 
 func TestHashPassword(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
 	password := "testpassword123"
 
-	hash, err := HashPassword(password)
+	hash, err := authenticator.HashPassword(password)
 	if err != nil {
 		t.Fatalf("HashPassword returned error: %v", err)
 	}
@@ -17,16 +18,34 @@ func TestHashPassword(t *testing.T) {
 	}
 }
 
+func TestHashPassword_SaltsEachHash(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
+	password := "testpassword123"
+
+	hash1, err := authenticator.HashPassword(password)
+	if err != nil {
+		t.Fatalf("HashPassword returned error: %v", err)
+	}
+	hash2, err := authenticator.HashPassword(password)
+	if err != nil {
+		t.Fatalf("HashPassword returned error: %v", err)
+	}
+	if hash1 == hash2 {
+		t.Fatal("expected different hashes for the same password (argon2id salts)")
+	}
+}
+
 func TestCheckPasswordHash(t *testing.T) {
+	authenticator := NewRealAuthenticator("test-secret")
 	password := "testpassword123"
 	wrongPassword := "wrongpassword"
 
-	hash, err := HashPassword(password)
+	hash, err := authenticator.HashPassword(password)
 	if err != nil {
 		t.Fatalf("HashPassword returned error: %v", err)
 	}
 
-	ok, err := CheckPasswordHash(password, hash)
+	ok, err := authenticator.CheckPasswordHash(password, hash)
 	if err != nil {
 		t.Fatalf("CheckPasswordHash returned error for correct password: %v", err)
 	}
@@ -34,7 +53,7 @@ func TestCheckPasswordHash(t *testing.T) {
 		t.Fatal("CheckPasswordHash returned false for correct password")
 	}
 
-	ok, err = CheckPasswordHash(wrongPassword, hash)
+	ok, err = authenticator.CheckPasswordHash(wrongPassword, hash)
 	if err != nil {
 		t.Fatalf("CheckPasswordHash returned error for wrong password: %v", err)
 	}

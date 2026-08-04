@@ -68,8 +68,6 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	user, err := h.store.GetUserByEmail(r.Context(), request.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// Unknown email: respond identically to a wrong password so the
-			// API never reveals which emails are registered.
 			writeError(w, http.StatusUnauthorized, "Incorrect email or password")
 			return
 		}
@@ -79,7 +77,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := auth.CheckPasswordHash(request.Password, user.HashedPassword)
+	match, err := h.apiConfig.Authenticator.CheckPasswordHash(request.Password, user.HashedPassword)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to check password hash", err)
 		writeError(w, http.StatusInternalServerError, "Failed to check password hash")
@@ -92,7 +90,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(user.ID, h.apiConfig.Secret, time.Hour)
+	token, err := h.apiConfig.Authenticator.MakeJWT(user.ID, time.Hour)
 
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to generate JWT", err)
@@ -101,7 +99,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refreshToken, err := h.store.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
-		Token:     auth.MakeRefreshToken(),
+		Token:     h.apiConfig.Authenticator.MakeRefreshToken(),
 		UserID:    user.ID,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	})
@@ -152,7 +150,7 @@ func (h *LoginHandler) GetRefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(refreshToken.UserID, h.apiConfig.Secret, time.Hour)
+	token, err := h.apiConfig.Authenticator.MakeJWT(refreshToken.UserID, time.Hour)
 	if err != nil {
 		h.apiConfig.Logger.Error("Failed to generate JWT", err)
 		writeError(w, http.StatusInternalServerError, "Failed to generate token")

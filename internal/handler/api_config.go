@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
 
@@ -40,18 +41,18 @@ func NewLogger() Logger {
 
 type ApiConfig struct {
 	Database       database.Querier
+	Authenticator  auth.Authenticator
 	fileserverHits atomic.Int32
 	Logger         Logger
-	Secret         string
 	PolkaKey       string
 }
 
-func NewApiConfig(db database.Querier, secret string, polkaKey string) *ApiConfig {
+func NewApiConfig(db database.Querier, authenticator auth.Authenticator, polkaKey string) *ApiConfig {
 	return &ApiConfig{
-		Database: db,
-		Logger:   NewLogger(),
-		Secret:   secret,
-		PolkaKey: polkaKey,
+		Database:      db,
+		Authenticator: authenticator,
+		Logger:        NewLogger(),
+		PolkaKey:      polkaKey,
 	}
 }
 
