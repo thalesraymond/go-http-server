@@ -97,9 +97,6 @@ func TestCreateUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// HashPassword is a package-level var; subtests run sequentially,
-			// so each case can swap in its own stub and the test-level
-			// cleanup restores the original.
 			authMock := newDefaultMockAuthenticator()
 			if tt.hashError {
 				authMock.hashPasswordFn = func(password string) (string, error) {
