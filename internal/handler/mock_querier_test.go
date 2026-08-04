@@ -9,10 +9,6 @@ import (
 
 var _ database.Querier = (*mockQuerier)(nil)
 
-// mockQuerier implements database.Querier with per-method stub functions.
-// Every method records its arguments so tests can assert on them. Because
-// the handler store interfaces (chirpStore, loginStore, userStore,
-// polkaStore) are subsets of Querier, this one fake satisfies all of them.
 type mockQuerier struct {
 	createChirpFn         func(ctx context.Context, arg database.CreateChirpParams) (database.Chirp, error)
 	getAllChirpsAscFn     func(ctx context.Context, authorID uuid.NullUUID) ([]database.Chirp, error)
