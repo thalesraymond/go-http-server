@@ -40,9 +40,9 @@ func replaceProfanity(text string) string {
 			if idx == -1 {
 				break
 			}
-			
+
 			result = result[:idx] + "****" + result[idx+len(word):]
-			
+
 			lowerText = strings.ToLower(result)
 		}
 	}

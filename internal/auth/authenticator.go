@@ -18,11 +18,9 @@ type Authenticator interface {
 	MakeRefreshToken() string
 }
 
-
 type RealAuthenticator struct {
 	secret string
 }
-
 
 func NewRealAuthenticator(secret string) *RealAuthenticator {
 	return &RealAuthenticator{secret: secret}
