@@ -30,10 +30,11 @@ This project is part of the boot.dev curriculum for learning Go and backend deve
 ```
 ├── main.go                       # Server entry point & route registration
 ├── internal/
-│   ├── auth/                     # Auth primitives
-│   │   ├── hashing.go            # Argon2id password hashing
-│   │   ├── jwt.go                # JWT access tokens
-│   │   └── refresh_token.go      # Opaque refresh tokens
+│   ├── auth/                     # Identity primitives
+│   │   ├── authenticator.go      # Argon2id hashing, JWT access tokens, refresh tokens
+│   │   └── token.go              # Authorization header parsers
+│   ├── session/                  # Session lifecycle (start / renew / revoke)
+│   │   └── session.go
 │   ├── database/                 # Generated sqlc database layer
 │   │   ├── db.go
 │   │   ├── models.go
@@ -43,8 +44,8 @@ This project is part of the boot.dev curriculum for learning Go and backend deve
 │   └── handler/                  # HTTP handlers & middleware
 │       ├── admin.go              # Metrics & reset endpoints
 │       ├── logger.go             # Logger interface & default implementation
-│       ├── user.go               # User endpoints
-│       ├── login.go              # Login / refresh / revoke endpoints
+│       ├── user.go               # User registration & update endpoints
+│       ├── session.go            # Login / refresh / revoke endpoints
 │       ├── chirp.go              # Chirp endpoints
 │       ├── polka.go              # Polka webhook handler
 │       ├── middleware.go         # Auth handshake (RequireAuth / RequirePolkaAuth)
@@ -79,7 +80,7 @@ This project is part of the boot.dev curriculum for learning Go and backend deve
 
 ## Prerequisites
 
-- Go 1.22+
+- Go 1.25+
 - PostgreSQL
 - [sqlc](https://sqlc.dev/) (for regenerating database code)
 - [goose](https://github.com/pressly/goose) (for database migrations)
@@ -107,7 +108,7 @@ This project is part of the boot.dev curriculum for learning Go and backend deve
 
 4. **Start the server:**
    ```bash
-   go run main.go
+   go run .
    ```
 
 The server starts on `:8080`.

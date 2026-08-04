@@ -4,19 +4,20 @@ Go HTTP server built with the standard library (`net/http`, Go 1.25+) as part of
 
 ## Architecture
 
-- `main.go` — server entry point and route registration
+- `main.go` — server entry point and route registration (graceful shutdown on SIGINT/SIGTERM)
 - `internal/handler/` — HTTP handlers and middleware; handlers take explicit dependencies (store interface, `Logger`, `Authenticator`, `AuthHandshake`) in their constructors
   - `admin.go` — `Admin` module: file-server metrics and reset endpoints
   - `logger.go` — `Logger` interface + `defaultLogger` implementation
   - `user.go` — user registration and update endpoints
-  - `login.go` — login, refresh token, and revoke endpoints
+  - `session.go` — login, refresh token, and revoke endpoints
   - `chirp.go` — chirp CRUD endpoints
   - `polka.go` — webhook handler for Polka events
   - `middleware.go` — `AuthHandshake` module: `RequireAuth` (JWT) and `RequirePolkaAuth` (API key) middleware
   - `healthz.go` — health check endpoint
-  - `respond.go` — response helpers (`writeJSON`, `writeError`)
+  - `respond.go` — response helpers (`writeJSON`, `writeError`, `writeText`, `writeNoContent`, `decodeJSON`)
   - `validate_chirp.go` — chirp content validation
 - `internal/auth/` — identity primitives. `Authenticator` interface + `RealAuthenticator` adapter (argon2id hashing, JWT access tokens, refresh tokens); handlers receive it as an explicit constructor dependency, and tests inject a stub instead of mutating package state. `token.go` holds standalone header parsers (`GetBearerToken`, `GetAPIKey`)
+- `internal/session/` — `Session` module: session lifecycle (start / renew / revoke) with `AccessTokenTTL` and `RefreshTokenTTL`
 - `internal/database/` — **generated sqlc code; never hand-edit**. Change `sql/queries/*.sql` instead, then run `sqlc generate`
 - `sql/schema/` — goose migrations; apply with `./goose.sh up` (requires `.env` with `DB_URL`)
 - `requests/*.http` — REST Client request examples, organized one file per endpoint group
@@ -27,6 +28,7 @@ Go HTTP server built with the standard library (`net/http`, Go 1.25+) as part of
 - Build: `go build ./...`
 - Test: `go tool gotestsum --format standard-verbose -- -v -race -cover ./...`
 - Vet: `go vet ./...`
+- Format check: `make fmt-check` (or `gofmt -l .`; fail on any output)
 - Run: `go run .` with `DB_URL` set in `.env`
 
 Run build and tests after any change before reporting done.
@@ -34,7 +36,7 @@ Run build and tests after any change before reporting done.
 ## Conventions
 
 - Keep `requests/*.http` in sync whenever endpoints change — the user relies on these files to test endpoints
-- Handler patterns: early returns, `returnWithJSON`/`returnWithError` helpers in `respond.go`, request/response structs at package level
+- Handler patterns: early returns, `writeJSON`/`writeError` helpers in `respond.go`, request/response structs at package level
 - Prefer modern stdlib idioms (Go 1.25): `atomic.Int32`, `fmt.Appendf`, etc. — the editor's linter flags older patterns
 - sqlc regenerates `internal/database/` — edit the SQL queries, never the generated files
 

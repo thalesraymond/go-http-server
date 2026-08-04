@@ -45,7 +45,7 @@ func (a *Admin) HandlerReset(w http.ResponseWriter, r *http.Request) {
 	err := a.db.DeleteAllUsers(r.Context())
 	if err != nil {
 		a.logger.Error("Failed to delete all users", err)
-		http.Error(w, "Failed to delete all users", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Failed to delete all users")
 		return
 	}
 

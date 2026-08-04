@@ -50,6 +50,18 @@ func TestCreateUser(t *testing.T) {
 			wantError:  "Invalid request payload",
 		},
 		{
+			name:       "rejects missing email",
+			body:       `{"email": "", "password": "hunter2"}`,
+			wantStatus: http.StatusBadRequest,
+			wantError:  "email and password are required",
+		},
+		{
+			name:       "rejects missing password",
+			body:       `{"email": "ada@example.com", "password": ""}`,
+			wantStatus: http.StatusBadRequest,
+			wantError:  "email and password are required",
+		},
+		{
 			name:       "handles password hashing error",
 			body:       `{"email": "ada@example.com", "password": "hunter2"}`,
 			hashError:  true,

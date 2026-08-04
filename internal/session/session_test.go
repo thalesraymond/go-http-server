@@ -129,7 +129,7 @@ func TestStart(t *testing.T) {
 		if store.created.Token != "refresh-1" {
 			t.Errorf("store received token = %q, want %q", store.created.Token, "refresh-1")
 		}
-		wantExpiry := time.Now().Add(RefreshTokenTTL)
+		wantExpiry := time.Now().UTC().Add(RefreshTokenTTL)
 		if diff := store.created.ExpiresAt.Sub(wantExpiry); diff > time.Second || diff < -time.Second {
 			t.Errorf("store received expires_at %v, want ~%v", store.created.ExpiresAt, wantExpiry)
 		}

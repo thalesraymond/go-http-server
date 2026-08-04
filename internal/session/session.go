@@ -50,7 +50,7 @@ func (s *Session) Start(ctx context.Context, userID uuid.UUID) (string, string, 
 	_, err = s.store.CreateRefreshToken(ctx, database.CreateRefreshTokenParams{
 		Token:     refreshToken,
 		UserID:    userID,
-		ExpiresAt: time.Now().Add(RefreshTokenTTL),
+		ExpiresAt: time.Now().UTC().Add(RefreshTokenTTL),
 	})
 	if err != nil {
 		return "", "", err
@@ -79,7 +79,7 @@ func (s *Session) Renew(ctx context.Context, r *http.Request) (string, error) {
 		return "", ErrRefreshTokenRevoked
 	}
 
-	if stored.ExpiresAt.Before(time.Now()) {
+	if stored.ExpiresAt.Before(time.Now().UTC()) {
 		return "", ErrRefreshTokenExpired
 	}
 

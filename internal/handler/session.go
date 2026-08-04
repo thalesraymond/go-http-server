@@ -40,7 +40,7 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Id           uuid.UUID `json:"id"`
+	ID           uuid.UUID `json:"id"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Email        string    `json:"email"`
@@ -97,7 +97,7 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, LoginResponse{
-		Id:           user.ID,
+		ID:           user.ID,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
 		Email:        user.Email,

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -9,6 +10,15 @@ import (
 	"github.com/thalesraymond/go-http-server/internal/auth"
 	"github.com/thalesraymond/go-http-server/internal/database"
 )
+
+var ErrCredentialsRequired = errors.New("email and password are required")
+
+func validateUserCredentials(email, password string) error {
+	if email == "" || password == "" {
+		return ErrCredentialsRequired
+	}
+	return nil
+}
 
 type UserHandler struct {
 	store         userStore
@@ -63,6 +73,12 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validateUserCredentials(userRequestData.Email, userRequestData.Password); err != nil {
+		h.logger.Error("Email and password are required", err)
+		writeError(w, http.StatusBadRequest, "email and password are required")
+		return
+	}
+
 	hashedPassword, err := h.authenticator.HashPassword(userRequestData.Password)
 	if err != nil {
 		h.logger.Error("Failed to hash password", err)
@@ -100,8 +116,8 @@ func (h *UserHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 
-	if updateUserRequestData.Email == "" || updateUserRequestData.Password == "" {
-		h.logger.Error("Email and password are required", nil)
+	if err := validateUserCredentials(updateUserRequestData.Email, updateUserRequestData.Password); err != nil {
+		h.logger.Error("Email and password are required", err)
 		writeError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}

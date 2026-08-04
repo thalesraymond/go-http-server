@@ -199,8 +199,8 @@ func TestLogin(t *testing.T) {
 			if got.Email != loginUser.Email {
 				t.Errorf("response email = %q, want %q", got.Email, loginUser.Email)
 			}
-			if got.Id != userID {
-				t.Errorf("response id = %v, want %v", got.Id, userID)
+			if got.ID != userID {
+				t.Errorf("response id = %v, want %v", got.ID, userID)
 			}
 			if got.IsChirpyRed {
 				t.Error("response is_chirpy_red = true, want false")
